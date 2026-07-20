@@ -76,6 +76,7 @@
         "label": { "type": "string", "minLength": 1 },
         "division": { "enum": ["Water", "Geotech", "Shared", null] },
         "unit": { "type": ["string", "null"] },
+        "itemType": { "enum": ["activity", "ancillary", "material", "service", "measurement", "subcontractor", null] },
         "active": { "type": "boolean" },
         "sortOrder": { "type": "integer", "minimum": 0 }
       }

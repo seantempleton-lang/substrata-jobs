@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   Clock3,
   CloudOff,
+  Database,
   Download,
   Droplets,
   FileText,
@@ -105,13 +106,13 @@ const activityOptions = {
   ancillary: ["Workshop maintenance", "Yard duties", "Non-job travel", "Training", "Leave / other paid time"],
 };
 
-function App() {
+function App({ foundation }) {
   const [screen, setScreen] = useState(() => localStorage.getItem("sj-screen") || "assignments");
   const [selectedId, setSelectedId] = useState(() => localStorage.getItem("sj-scenario") || "geotech");
   const [myOnly, setMyOnly] = useState(true);
   const [activeTab, setActiveTab] = useState("work");
   const [sheet, setSheet] = useState(null);
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(foundation?.mode !== "offline");
   const [sent, setSent] = useState(false);
   const [toast, setToast] = useState("");
   const [activities, setActivities] = useState(() => activitySeed[selectedId]);
@@ -201,12 +202,12 @@ function App() {
           </div>
           <button className={`sync-chip ${online ? "" : "offline"}`} onClick={() => setOnline((value) => !value)}>
             {online ? <Signal size={14} /> : <CloudOff size={14} />}
-            {online ? "Synced" : "Offline"}
+            {online ? (foundation?.mode === "live" ? "Live" : "Synced") : "Offline"}
           </button>
         </header>
 
         {screen === "assignments" && (
-          <AssignmentsScreen myOnly={myOnly} setMyOnly={setMyOnly} chooseAssignment={chooseAssignment} openMenu={() => setSheet("prototype")} />
+          <AssignmentsScreen myOnly={myOnly} setMyOnly={setMyOnly} chooseAssignment={chooseAssignment} openMenu={() => setSheet("prototype")} foundation={foundation} />
         )}
         {screen === "setup" && <SetupScreen assignment={selected} start={() => setScreen("active")} />}
         {screen === "active" && (
@@ -252,7 +253,9 @@ function App() {
         {sheet === "prototype" && (
           <BottomSheet title="Prototype tools" close={() => setSheet(null)}>
             <div className="prototype-note"><Settings2 size={20} /><div><strong>Mocked UX only</strong><p>No records leave this device. Toggle the sync chip to preview offline status.</p></div></div>
+            {foundation?.mode !== "prototype" && <div className="prototype-note"><Database size={20} /><div><strong>Ops connection active</strong><p>{foundation?.assignments?.length || 0} planned assignments are cached on this device for the next 14 days.</p></div></div>}
             <button className="secondary-button" onClick={resetPrototype}><TimerReset size={18} />Reset walkthrough</button>
+            {foundation?.logout && <button className="text-button" onClick={foundation.logout}>Sign out of Substrata Jobs</button>}
           </BottomSheet>
         )}
         {sheet === "send" && (
@@ -270,11 +273,12 @@ function App() {
   );
 }
 
-function AssignmentsScreen({ myOnly, setMyOnly, chooseAssignment, openMenu }) {
+function AssignmentsScreen({ myOnly, setMyOnly, chooseAssignment, openMenu, foundation }) {
+  const firstName = foundation?.user?.displayName?.split(" ")[0] || "Sean";
   return (
     <div className="screen assignments-screen">
       <section className="page-heading">
-        <div><p className="date-label">MONDAY, 20 JULY</p><h2>Good morning, Sean.</h2><p>Choose today’s work to begin a daily record.</p></div>
+        <div><p className="date-label">MONDAY, 20 JULY</p><h2>Good morning, {firstName}.</h2><p>Choose today’s work to begin a daily record.</p></div>
         <button className="icon-button" onClick={openMenu} aria-label="Prototype menu"><Menu size={21} /></button>
       </section>
 
@@ -285,7 +289,9 @@ function AssignmentsScreen({ myOnly, setMyOnly, chooseAssignment, openMenu }) {
         <button className="filter-pill"><Clock3 size={15} />Today<ChevronDown size={14} /></button>
       </div>
 
-      <div className="section-title"><span>Planned work</span><span>2 assignments</span></div>
+      {foundation?.mode === "offline" && <div className="info-strip offline-foundation"><CloudOff size={17} /><span>Offline · using assignments cached {foundation.cachedAt ? new Date(foundation.cachedAt).toLocaleString() : "on this device"}.</span></div>}
+      {foundation?.mode === "live" && <div className="info-strip live-foundation"><Database size={17} /><span>Ops connected · {foundation.assignments?.length || 0} live assignments cached. Prototype walkthroughs are shown below.</span></div>}
+      <div className="section-title"><span>Prototype walkthroughs</span><span>2 assignments</span></div>
       <div className="assignment-list">
         {assignments.filter((a) => a.id !== "ancillary").map((assignment) => (
           <AssignmentCard key={assignment.id} assignment={assignment} choose={() => chooseAssignment(assignment.id)} />

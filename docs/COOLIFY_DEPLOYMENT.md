@@ -1,0 +1,103 @@
+# Coolify deployment
+
+## Resource configuration
+
+Deploy Substrata Jobs as a separate Dockerfile application in the same Coolify production environment as Ops Manager.
+
+- Domain: `https://substrata-jobs.mcm`
+- Container port: `8080`
+- Health check: `/health`
+- Build pack: Dockerfile
+- Branch: the actual GitHub branch, currently `master` unless renamed
+
+The container serves the PWA and `/api/v1` from the same origin. No separate nginx resource is required.
+
+## Required environment variables
+
+```dotenv
+NODE_ENV=production
+PORT=8080
+TRUST_PROXY=1
+APP_BASE_URL=https://substrata-jobs.mcm
+DATABASE_URL=postgresql://substrata_jobs:<password>@<postgres-internal-host>:5432/<ops-database>
+PGSSLMODE=disable
+RUN_MIGRATIONS=true
+SESSION_DURATION_DAYS=30
+COOKIE_SECURE=auto
+```
+
+Optional:
+
+```dotenv
+MIGRATION_DATABASE_URL=postgresql://<database-owner>:<password>@<postgres-internal-host>:5432/<ops-database>
+FIELD_BASE_URL=https://substrata-field.mcm
+PGPOOL_MAX=10
+```
+
+`DATABASE_URL` must point to the same database used by Ops Manager, not a newly empty database. The first migration deliberately checks for the Ops identity, jobs, equipment, and planner tables.
+
+`MIGRATION_DATABASE_URL` is only needed when the runtime Jobs role cannot create or alter tables in `jobs_app`. If it is supplied, the migration runner uses it while the API continues using the restricted `DATABASE_URL`.
+
+Do not set `VITE_BYPASS_AUTH=true` in Coolify. It is a local prototype escape hatch only.
+
+## Restricted PostgreSQL role
+
+Run the following once as the Ops database owner, replacing the password before execution:
+
+```sql
+create role substrata_jobs login password '<strong-random-password>';
+
+grant connect on database <ops_database_name> to substrata_jobs;
+grant usage on schema public to substrata_jobs;
+
+grant select on table
+  public.app_users,
+  public.jobs,
+  public.clients,
+  public.equipment,
+  public.planner_assignments
+to substrata_jobs;
+
+grant references on table
+  public.app_users,
+  public.jobs,
+  public.equipment,
+  public.planner_assignments
+to substrata_jobs;
+
+grant select, update on table public.app_auth_accounts to substrata_jobs;
+grant select, insert, update on table public.app_sessions to substrata_jobs;
+grant insert on table public.app_auth_events to substrata_jobs;
+
+create schema if not exists jobs_app authorization substrata_jobs;
+grant usage, create on schema jobs_app to substrata_jobs;
+```
+
+If the `jobs_app` schema was initially created by the Ops database owner, transfer it before using the restricted connection:
+
+```sql
+alter schema jobs_app owner to substrata_jobs;
+grant all privileges on all tables in schema jobs_app to substrata_jobs;
+grant all privileges on all sequences in schema jobs_app to substrata_jobs;
+```
+
+Future Jobs migrations create their tables inside this schema.
+
+## Coolify networking
+
+If PostgreSQL is a separate Coolify resource or Compose stack, Jobs must be able to resolve its internal hostname. Attach both resources to an appropriate predefined/private network, or use the internal PostgreSQL connection URL exposed by Coolify.
+
+Do not expose PostgreSQL publicly solely for this application.
+
+## First-deployment verification
+
+After deployment:
+
+1. Open `/health`; it should return `ok`.
+2. Open `/api/v1/health`; all checks should report `ok`.
+3. Sign in using an active Ops Manager username and password.
+4. Confirm the assignments screen reports that Ops is connected and assignments are cached.
+5. Temporarily disconnect the phone and reload the installed PWA; the cached workspace should remain available.
+6. Reconnect and confirm `/api/v1/health` still reports healthy.
+
+If `/health` succeeds but `/api/v1/health` returns 503, the container is running and the fault is limited to database configuration, permissions, or migrations.

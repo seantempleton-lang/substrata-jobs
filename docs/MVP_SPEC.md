@@ -587,3 +587,19 @@ The contract pack contains:
 - validated representative payloads for all three prototype scenarios
 
 No production migration has been created or applied. The database model remains a design reference until the shared-database and authentication assumptions receive implementation approval.
+
+### Step 3 - Foundation implemented; deployment verification pending
+
+The shared-cluster and shared-identity assumptions were approved on 20 July 2026. The repository now includes:
+
+- a same-origin Node API and PWA container for Coolify
+- an initial `jobs_app` PostgreSQL migration with catalogue, device, and sync-probe tables
+- shared Ops credential validation with a Jobs-specific secure session cookie
+- a compact assignment and catalogue bootstrap endpoint
+- IndexedDB caching for the 14-day field workspace
+- authenticated offline resume without storing password or bearer tokens in browser storage
+- a harmless idempotent sync probe used to verify device-to-server reconnection
+- health endpoints separating container health from database/integration health
+- restricted PostgreSQL role and Coolify environment guidance
+
+Step 3 reaches its exit criterion after these components are deployed to staging and verified against the production-shaped Ops database and phone network conditions. Daily-log persistence begins in Step 4 rather than the foundation migration.

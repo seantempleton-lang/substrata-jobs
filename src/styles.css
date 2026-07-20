@@ -26,6 +26,31 @@ button, input, select, textarea { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(220, 174, 80, 0.45); outline-offset: 2px; }
 
+.foundation-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 75% 20%, #f8fafc 0, #e7ebef 44%, #d3dae1 100%); }
+.foundation-card { width: min(100%, 430px); border: 1px solid #d7dde3; border-radius: 24px; background: #f7f8fa; padding: 30px; box-shadow: var(--shadow); }
+.foundation-card.centered { text-align: center; }
+.foundation-brand { display: flex; align-items: center; gap: 11px; }
+.foundation-card.centered .foundation-brand { justify-content: center; }
+.foundation-brand img { width: 42px; height: 42px; border-radius: 10px; }
+.foundation-brand div { display: flex; flex-direction: column; line-height: 1; text-align: left; }
+.foundation-brand span { color: #68798a; font-size: 8px; letter-spacing: .18em; font-weight: 800; }
+.foundation-brand strong { color: var(--deep); font-size: 22px; }
+.foundation-spinner { margin: 42px auto 18px; color: var(--gold); animation: foundation-spin .8s linear infinite; }
+@keyframes foundation-spin { to { transform: rotate(360deg); } }
+.foundation-card h1 { margin: 12px 0 7px; color: var(--deep); font: 800 27px/1.1 "Aptos Display", "Segoe UI", sans-serif; letter-spacing: -.035em; }
+.foundation-card.centered > p, .login-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.login-heading { margin: 38px 0 24px; }
+.foundation-eyebrow { color: #9c6610; font-size: 9px; letter-spacing: .15em; font-weight: 800; }
+.login-card form { display: grid; gap: 14px; }
+.login-card label { display: grid; gap: 6px; color: #526578; font-size: 11px; }
+.login-card input { width: 100%; border: 1px solid #cfd7df; border-radius: 10px; background: white; color: var(--ink); padding: 12px; font-size: 14px; }
+.login-card .primary-button { margin-top: 5px; }
+.login-card .primary-button svg:last-child { margin-left: auto; }
+.login-error { display: flex; align-items: center; gap: 8px; border-radius: 9px; padding: 10px; background: #fae8e5; color: #8f443c; font-size: 10px; }
+.foundation-security { display: flex; gap: 9px; margin-top: 22px; padding-top: 18px; border-top: 1px solid #dde2e7; color: #68798a; font-size: 9px; line-height: 1.45; }
+.foundation-security svg { flex: 0 0 auto; color: #49697a; }
+.unavailable-icon { width: 54px; height: 54px; display: grid; place-items: center; margin: 38px auto 18px; border-radius: 50%; background: #fff0d1; color: #9b630b; }
+
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(300px, 430px) minmax(360px, 520px); justify-content: center; gap: 70px; align-items: center; padding: 34px; background: radial-gradient(circle at 75% 20%, #f8fafc 0, #e7ebef 44%, #d3dae1 100%); }
 .desktop-context { padding: 30px 0; }
 .brand-mark, .mini-mark { display: block; background: var(--deep); }
@@ -87,6 +112,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .ancillary-card strong { font-size: 13px; }
 .ancillary-card small { color: var(--muted); font-size: 10px; margin-top: 3px; }
 .info-strip { margin: 0 14px 20px; padding: 11px 13px; border-radius: 11px; display: flex; align-items: center; gap: 8px; background: var(--blue-soft); color: #3c6871; font-size: 11px; }
+.info-strip.live-foundation, .info-strip.offline-foundation { margin-bottom: 14px; }
+.info-strip.live-foundation { background: #e8edf3; color: #334f69; }
+.info-strip.offline-foundation { background: #fff0d1; color: #80560f; }
 
 .record-hero { padding: 22px 20px 18px; background: #ece8de; border-bottom: 1px solid #d9d4ca; }
 .record-type { display: inline-flex; padding: 5px 8px; border-radius: 6px; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; margin-bottom: 9px; }

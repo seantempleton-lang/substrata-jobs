@@ -17,6 +17,15 @@ npm.cmd install
 npm.cmd run dev
 ```
 
+For UI-only prototype work without PostgreSQL or authentication:
+
+```powershell
+$env:VITE_BYPASS_AUTH='true'
+npm.cmd run dev:web
+```
+
+Never enable that flag in Coolify.
+
 For a production-style local build:
 
 ```powershell
@@ -30,4 +39,4 @@ Validate the representative integration payloads with:
 npm.cmd run contracts:validate
 ```
 
-The included `Dockerfile` serves the built PWA through nginx and is suitable for a Coolify Dockerfile deployment. The container exposes port `8080` and provides `/health` for health checks.
+The included `Dockerfile` serves the PWA and same-origin Jobs API from Node and is suitable for a Coolify Dockerfile deployment. The container exposes port `8080` and provides `/health` for health checks. See [docs/COOLIFY_DEPLOYMENT.md](docs/COOLIFY_DEPLOYMENT.md) for the database role, environment variables, networking and first-deployment checks.
