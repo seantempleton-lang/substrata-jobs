@@ -12,8 +12,8 @@ export default defineConfig({
         name: "Substrata Jobs",
         short_name: "Jobs",
         description: "Offline-first field activity records for drilling teams.",
-        theme_color: "#10282d",
-        background_color: "#f4f1e9",
+        theme_color: "#0F1E2E",
+        background_color: "#F7F8FA",
         display: "standalone",
         start_url: "/",
         icons: [

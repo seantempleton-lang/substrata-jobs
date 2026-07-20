@@ -178,7 +178,7 @@ function App() {
   return (
     <div className="app-shell">
       <div className="desktop-context" aria-hidden="true">
-        <div className="brand-mark">S</div>
+        <img className="brand-mark" src="/favicon.svg" alt="" />
         <p className="eyebrow">SUBSTRATA JOBS</p>
         <h1>The field record,<br />from shift to sign-off.</h1>
         <p className="desktop-copy">Step 1 UX prototype · mocked records · designed for offline field work.</p>
@@ -190,10 +190,9 @@ function App() {
       <main className="device" aria-live="polite">
         <header className="topbar">
           <div className="topbar-title">
-            {screen !== "assignments" ? (
+            <img className="mini-mark" src="/favicon.svg" alt="Substrata" />
+            {screen !== "assignments" && (
               <button className="icon-button light" onClick={goBack} aria-label="Go back"><ArrowLeft size={20} /></button>
-            ) : (
-              <div className="mini-mark">S</div>
             )}
             <div>
               <span className="topbar-kicker">SUBSTRATA</span>
@@ -555,7 +554,7 @@ function SignaturePad() {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   const start = (event) => { drawing.current = true; const ctx = canvasRef.current.getContext("2d"); const p = position(event); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-  const draw = (event) => { if (!drawing.current) return; const ctx = canvasRef.current.getContext("2d"); const p = position(event); ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.strokeStyle = "#17373c"; ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  const draw = (event) => { if (!drawing.current) return; const ctx = canvasRef.current.getContext("2d"); const p = position(event); ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.strokeStyle = "#0F1E2E"; ctx.lineTo(p.x, p.y); ctx.stroke(); };
   const stop = () => { drawing.current = false; };
   return (
     <div className="signature-wrap"><canvas ref={canvasRef} width="640" height="220" onPointerDown={start} onPointerMove={draw} onPointerUp={stop} onPointerLeave={stop} /><span>Sign above</span><button onClick={() => canvasRef.current.getContext("2d").clearRect(0, 0, 640, 220)}>Clear</button></div>
