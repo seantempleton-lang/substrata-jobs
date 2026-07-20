@@ -1,0 +1,85 @@
+{
+  "contractVersion": "1.0",
+  "serverTime": "2026-07-19T22:15:00.000Z",
+  "syncCursor": "01K0M3YKJX2W5FRJH7D67PQT98",
+  "retentionDays": 14,
+  "currentUser": {
+    "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+    "employeeCode": "EMP-001",
+    "displayName": "Sean Templeton",
+    "roleTitle": "Driller / leading hand",
+    "appRole": "FieldUser",
+    "division": "Geotech",
+    "region": "North"
+  },
+  "permissions": ["assignments:view", "daily_logs:create", "daily_logs:submit"],
+  "assignments": [
+    {
+      "assignmentId": "c3070ad8-cdf6-4a59-8bf0-af8942d3bd46",
+      "assignmentType": "job",
+      "startsOn": "2026-07-20",
+      "endsOn": "2026-07-20",
+      "title": "Northern Corridor ground investigation",
+      "job": {
+        "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a",
+        "jobNumber": "302670",
+        "title": "Northern Corridor ground investigation",
+        "division": "Geotech",
+        "clientId": "1da08388-9229-4ca0-88d1-11847d87d52b",
+        "clientName": "Waka Kotahi NZ Transport Agency",
+        "siteName": "Northern Corridor",
+        "siteAddress": "SH1, Albany"
+      },
+      "equipment": {
+        "equipmentId": "95705145-85c7-4b43-9672-5e4be91f1e76",
+        "equipmentCode": "N107",
+        "name": "N107 Geotechnical Drill Rig",
+        "equipmentType": "Drill rig",
+        "division": "Geotech"
+      },
+      "personnel": [
+        {
+          "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+          "employeeCode": "EMP-001",
+          "displayName": "Sean Templeton",
+          "roleTitle": "Driller / leading hand",
+          "appRole": "FieldUser",
+          "division": "Geotech",
+          "region": "North"
+        },
+        {
+          "userId": "96c251a6-a2ac-48dd-9d74-6657080ad696",
+          "employeeCode": "EMP-021",
+          "displayName": "Leah Baxter",
+          "roleTitle": "Drilling assistant",
+          "appRole": "FieldUser",
+          "division": "Geotech",
+          "region": "North"
+        }
+      ],
+      "points": [
+        { "jobNumber": "302670", "pointId": "BH5049", "pointType": "BH", "status": "Planned", "plannedDepthM": 15.0, "location": "Northbound shoulder" },
+        { "jobNumber": "302670", "pointId": "BH5050", "pointType": "BH", "status": "Planned", "plannedDepthM": 12.0, "location": "Southbound verge" }
+      ],
+      "isMine": true,
+      "updatedAt": "2026-07-19T21:40:00.000Z"
+    }
+  ],
+  "catalogues": {
+    "version": 1,
+    "effectiveFrom": "2026-07-19T12:00:00.000Z",
+    "activities": [
+      { "code": "PRESTART", "label": "Pre-start and site setup", "division": "Shared", "unit": null, "active": true, "sortOrder": 10 },
+      { "code": "GT_ROTARY_SONIC", "label": "Rotary sonic drilling", "division": "Geotech", "unit": null, "active": true, "sortOrder": 20 },
+      { "code": "GT_SPT", "label": "SPT and sampling", "division": "Geotech", "unit": null, "active": true, "sortOrder": 30 }
+    ],
+    "ancillaryCodes": [
+      { "code": "ANC_WORKSHOP", "label": "Workshop", "division": "Shared", "unit": "hour", "active": true, "sortOrder": 10 },
+      { "code": "ANC_TRAVEL_NONJOB", "label": "Non-job travel", "division": "Shared", "unit": "hour", "active": true, "sortOrder": 20 }
+    ],
+    "items": [
+      { "code": "GT_SPT_TEST", "label": "SPT test", "division": "Geotech", "unit": "each", "active": true, "sortOrder": 10 },
+      { "code": "GT_CEMENT", "label": "Cement grout", "division": "Geotech", "unit": "bag", "active": true, "sortOrder": 20 }
+    ]
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "contractVersion": "1.0",
+  "id": "b462603d-bb8c-4bbf-ab81-cd64bb3ed329",
+  "logType": "rig_shift",
+  "division": "Geotech",
+  "assignmentId": "c3070ad8-cdf6-4a59-8bf0-af8942d3bd46",
+  "job": {
+    "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a",
+    "jobNumber": "302670",
+    "title": "Northern Corridor ground investigation",
+    "division": "Geotech",
+    "clientId": "1da08388-9229-4ca0-88d1-11847d87d52b",
+    "clientName": "Waka Kotahi NZ Transport Agency",
+    "siteName": "Northern Corridor",
+    "siteAddress": "SH1, Albany"
+  },
+  "equipment": {
+    "equipmentId": "95705145-85c7-4b43-9672-5e4be91f1e76",
+    "equipmentCode": "N107",
+    "name": "N107 Geotechnical Drill Rig",
+    "equipmentType": "Drill rig",
+    "division": "Geotech"
+  },
+  "owner": {
+    "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+    "employeeCode": "EMP-001",
+    "displayName": "Sean Templeton",
+    "roleTitle": "Driller / leading hand",
+    "appRole": "FieldUser",
+    "division": "Geotech",
+    "region": "North"
+  },
+  "shift": {
+    "label": "day",
+    "startedAt": "2026-07-19T19:00:00.000Z",
+    "endedAt": "2026-07-20T05:00:00.000Z",
+    "timezone": "Pacific/Auckland"
+  },
+  "status": "submitted",
+  "serverRevision": 7,
+  "currentDocumentRevision": 1,
+  "carriedFromLogId": null,
+  "crew": [
+    {
+      "id": "8d68da25-456b-4598-ae5a-cff22e77283c",
+      "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+      "employeeCodeSnapshot": "EMP-001",
+      "displayNameSnapshot": "Sean Templeton",
+      "roleSnapshot": "Driller / leading hand",
+      "attendedFrom": "2026-07-19T19:00:00.000Z",
+      "attendedTo": "2026-07-20T05:00:00.000Z"
+    },
+    {
+      "id": "4c4e3e0c-2991-4bed-8300-056685a3f37e",
+      "userId": "96c251a6-a2ac-48dd-9d74-6657080ad696",
+      "employeeCodeSnapshot": "EMP-021",
+      "displayNameSnapshot": "Leah Baxter",
+      "roleSnapshot": "Drilling assistant",
+      "attendedFrom": "2026-07-19T19:00:00.000Z",
+      "attendedTo": "2026-07-19T22:15:00.000Z"
+    },
+    {
+      "id": "bb31e385-b72a-4c9c-b7c9-d455640561bb",
+      "userId": "a4bccfe5-9d4c-4509-be87-7b5840b1c983",
+      "employeeCodeSnapshot": "EMP-034",
+      "displayNameSnapshot": "Tama Rangi",
+      "roleSnapshot": "Drilling assistant",
+      "attendedFrom": "2026-07-19T22:15:00.000Z",
+      "attendedTo": "2026-07-20T05:00:00.000Z"
+    }
+  ],
+  "points": [
+    {
+      "id": "51091a22-bc1b-45e4-b75a-ed85494c0225",
+      "sequence": 1,
+      "jobNumber": "302670",
+      "pointId": "BH5049",
+      "startedAt": "2026-07-19T19:20:00.000Z",
+      "endedAt": "2026-07-20T00:00:00.000Z",
+      "startDepthM": 0.0,
+      "endDepthM": 12.4,
+      "endStatus": "Suspended"
+    },
+    {
+      "id": "ffbfc1dc-7c31-4755-8910-fc69d194fc07",
+      "sequence": 2,
+      "jobNumber": "302670",
+      "pointId": "BH5050",
+      "startedAt": "2026-07-20T00:00:00.000Z",
+      "endedAt": "2026-07-20T04:35:00.000Z",
+      "startDepthM": 0.0,
+      "endDepthM": 7.8,
+      "endStatus": "Suspended"
+    }
+  ],
+  "activities": [
+    {
+      "id": "50a60bd5-f22b-442e-8c31-dfe37752ae41",
+      "sequence": 1,
+      "pointSegmentId": null,
+      "activityCode": "PRESTART",
+      "activityLabelSnapshot": "Pre-start and site setup",
+      "startedAt": "2026-07-19T19:00:00.000Z",
+      "endedAt": "2026-07-19T19:20:00.000Z",
+      "allocation": { "type": "job", "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a", "jobNumber": "302670" },
+      "notes": null
+    },
+    {
+      "id": "ef1957cf-3156-454b-aeef-5bed99ae3949",
+      "sequence": 2,
+      "pointSegmentId": "51091a22-bc1b-45e4-b75a-ed85494c0225",
+      "activityCode": "GT_ROTARY_SONIC",
+      "activityLabelSnapshot": "Rotary sonic drilling",
+      "startedAt": "2026-07-19T19:20:00.000Z",
+      "endedAt": "2026-07-19T21:35:00.000Z",
+      "allocation": { "type": "job", "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a", "jobNumber": "302670" },
+      "notes": null
+    },
+    {
+      "id": "333d24e5-7670-4e71-a774-0fe3710cf0b1",
+      "sequence": 3,
+      "pointSegmentId": "51091a22-bc1b-45e4-b75a-ed85494c0225",
+      "activityCode": "GT_SPT",
+      "activityLabelSnapshot": "SPT and sampling",
+      "startedAt": "2026-07-19T21:35:00.000Z",
+      "endedAt": "2026-07-20T00:00:00.000Z",
+      "allocation": { "type": "job", "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a", "jobNumber": "302670" },
+      "notes": "SPT at scheduled intervals."
+    },
+    {
+      "id": "933f27c6-cd58-4052-be70-f2a4c74a11b7",
+      "sequence": 4,
+      "pointSegmentId": "ffbfc1dc-7c31-4755-8910-fc69d194fc07",
+      "activityCode": "GT_ROTARY_SONIC",
+      "activityLabelSnapshot": "Rotary sonic drilling",
+      "startedAt": "2026-07-20T00:00:00.000Z",
+      "endedAt": "2026-07-20T04:35:00.000Z",
+      "allocation": { "type": "job", "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a", "jobNumber": "302670" },
+      "notes": null
+    },
+    {
+      "id": "5d14cf6e-8f4b-48f9-a102-7288d1c13325",
+      "sequence": 5,
+      "pointSegmentId": null,
+      "activityCode": "PACKDOWN",
+      "activityLabelSnapshot": "Pack down and site tidy",
+      "startedAt": "2026-07-20T04:35:00.000Z",
+      "endedAt": "2026-07-20T05:00:00.000Z",
+      "allocation": { "type": "job", "jobId": "70941922-698f-481e-ac3b-a1f8b1319d4a", "jobNumber": "302670" },
+      "notes": null
+    }
+  ],
+  "items": [
+    {
+      "id": "ceeb6641-ec7e-41bd-b364-02aa1951df68",
+      "pointSegmentId": "51091a22-bc1b-45e4-b75a-ed85494c0225",
+      "itemType": "measurement",
+      "itemCode": "GT_SPT_TEST",
+      "itemLabelSnapshot": "SPT test",
+      "quantity": 4,
+      "unit": "each",
+      "notes": null
+    },
+    {
+      "id": "7595f659-029f-4636-8f98-2a92ddc5ea4a",
+      "pointSegmentId": "ffbfc1dc-7c31-4755-8910-fc69d194fc07",
+      "itemType": "material",
+      "itemCode": "GT_CEMENT",
+      "itemLabelSnapshot": "Cement grout",
+      "quantity": 8,
+      "unit": "bag",
+      "notes": null
+    }
+  ],
+  "clientAcknowledgement": {
+    "status": "not_signed",
+    "reasonCode": "CLIENT_UNAVAILABLE",
+    "reasonNotes": null,
+    "clientEmail": "site.rep@client.co.nz"
+  },
+  "notes": "Traffic management in place. No incidents or environmental issues.",
+  "createdAt": "2026-07-19T18:55:00.000Z",
+  "updatedAt": "2026-07-20T05:08:00.000Z"
+}

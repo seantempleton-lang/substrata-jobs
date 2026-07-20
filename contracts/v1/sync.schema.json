@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://substrata-jobs.mcm/contracts/v1/sync.schema.json",
+  "title": "Substrata Jobs offline sync contract",
+  "$defs": {
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutationId", "entityType", "entityId", "operation", "baseRevision", "occurredAt", "payload"],
+      "properties": {
+        "mutationId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "entityType": { "enum": ["daily_log", "crew_attendance", "point_segment", "activity", "log_item", "client_acknowledgement"] },
+        "entityId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "operation": { "enum": ["upsert", "delete_draft_child"] },
+        "baseRevision": { "type": "integer", "minimum": 0 },
+        "occurredAt": { "$ref": "common.schema.json#/$defs/instant" },
+        "payload": { "type": ["object", "null"] }
+      }
+    },
+    "acknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutationId", "status"],
+      "properties": {
+        "mutationId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "status": { "enum": ["applied", "duplicate", "conflict", "rejected"] },
+        "serverRevision": { "type": ["integer", "null"], "minimum": 0 },
+        "errorCode": { "type": ["string", "null"] },
+        "message": { "type": ["string", "null"] }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "batchId", "deviceId", "lastSyncCursor", "mutations"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "batchId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "deviceId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "lastSyncCursor": { "type": ["string", "null"] },
+        "mutations": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/mutation" } }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "serverTime", "syncCursor", "acknowledgements", "changes"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "serverTime": { "$ref": "common.schema.json#/$defs/instant" },
+        "syncCursor": { "type": "string" },
+        "acknowledgements": { "type": "array", "items": { "$ref": "#/$defs/acknowledgement" } },
+        "changes": { "type": "array", "items": { "$ref": "#/$defs/mutation" } }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }
+  ]
+}

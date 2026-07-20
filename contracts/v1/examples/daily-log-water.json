@@ -1,0 +1,154 @@
+{
+  "contractVersion": "1.0",
+  "id": "43cb0950-05ac-4412-8ba9-f32c9ee5d2df",
+  "logType": "rig_shift",
+  "division": "Water",
+  "assignmentId": "67264a97-86e3-4873-b291-c50129efca3f",
+  "job": {
+    "jobId": "a1ea35ba-4309-498c-8e20-154589428d23",
+    "jobNumber": "302684",
+    "title": "Rural production bore programme",
+    "division": "Water",
+    "clientId": "91538b65-b5f4-4983-9b5e-866690519a64",
+    "clientName": "Watercare Services Limited",
+    "siteName": "Helensville production bore",
+    "siteAddress": "Helensville, Auckland"
+  },
+  "equipment": {
+    "equipmentId": "c501a7a0-155e-4a31-9eaf-6fbf10016c88",
+    "equipmentCode": "W12",
+    "name": "W12 Waterwell Drill Rig",
+    "equipmentType": "Drill rig",
+    "division": "Water"
+  },
+  "owner": {
+    "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+    "employeeCode": "EMP-001",
+    "displayName": "Sean Templeton",
+    "roleTitle": "Driller / leading hand",
+    "appRole": "FieldUser",
+    "division": "Water",
+    "region": "North"
+  },
+  "shift": {
+    "label": "day",
+    "startedAt": "2026-07-19T18:30:00.000Z",
+    "endedAt": "2026-07-20T04:30:00.000Z",
+    "timezone": "Pacific/Auckland"
+  },
+  "status": "submitted",
+  "serverRevision": 5,
+  "currentDocumentRevision": 1,
+  "carriedFromLogId": null,
+  "crew": [
+    {
+      "id": "35179145-4b07-4adc-bee8-7f2fd2d50d87",
+      "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+      "employeeCodeSnapshot": "EMP-001",
+      "displayNameSnapshot": "Sean Templeton",
+      "roleSnapshot": "Driller / leading hand",
+      "attendedFrom": "2026-07-19T18:30:00.000Z",
+      "attendedTo": "2026-07-20T04:30:00.000Z"
+    },
+    {
+      "id": "a2beb863-50c6-4e82-8a25-66a62dfe99dd",
+      "userId": "42047511-ff63-468a-8eb4-46b39a28e418",
+      "employeeCodeSnapshot": "EMP-042",
+      "displayNameSnapshot": "Wiremu Te Aho",
+      "roleSnapshot": "Drilling assistant",
+      "attendedFrom": "2026-07-19T18:30:00.000Z",
+      "attendedTo": "2026-07-20T04:30:00.000Z"
+    }
+  ],
+  "points": [
+    {
+      "id": "99e21f39-c5d5-439e-a777-3d38527f19c5",
+      "sequence": 1,
+      "jobNumber": "302684",
+      "pointId": "WB-03",
+      "startedAt": "2026-07-19T19:00:00.000Z",
+      "endedAt": "2026-07-20T04:00:00.000Z",
+      "startDepthM": 0.0,
+      "endDepthM": 18.0,
+      "endStatus": "Suspended"
+    }
+  ],
+  "activities": [
+    {
+      "id": "704c981f-dac5-47ae-8fbe-b34fb85e08e7",
+      "sequence": 1,
+      "pointSegmentId": null,
+      "activityCode": "PRESTART",
+      "activityLabelSnapshot": "Pre-start and site setup",
+      "startedAt": "2026-07-19T18:30:00.000Z",
+      "endedAt": "2026-07-19T19:00:00.000Z",
+      "allocation": { "type": "job", "jobId": "a1ea35ba-4309-498c-8e20-154589428d23", "jobNumber": "302684" },
+      "notes": null
+    },
+    {
+      "id": "971a5f12-98fe-4b30-ad8f-18190ec9cd18",
+      "sequence": 2,
+      "pointSegmentId": "99e21f39-c5d5-439e-a777-3d38527f19c5",
+      "activityCode": "WT_MUD_ROTARY",
+      "activityLabelSnapshot": "Mud rotary drilling",
+      "startedAt": "2026-07-19T19:00:00.000Z",
+      "endedAt": "2026-07-20T02:00:00.000Z",
+      "allocation": { "type": "job", "jobId": "a1ea35ba-4309-498c-8e20-154589428d23", "jobNumber": "302684" },
+      "notes": "Formation change at 14.5 m."
+    },
+    {
+      "id": "de639947-2e98-44e5-981a-74dcf1d79cc1",
+      "sequence": 3,
+      "pointSegmentId": "99e21f39-c5d5-439e-a777-3d38527f19c5",
+      "activityCode": "WT_CASING",
+      "activityLabelSnapshot": "Casing installation",
+      "startedAt": "2026-07-20T02:00:00.000Z",
+      "endedAt": "2026-07-20T04:00:00.000Z",
+      "allocation": { "type": "job", "jobId": "a1ea35ba-4309-498c-8e20-154589428d23", "jobNumber": "302684" },
+      "notes": null
+    },
+    {
+      "id": "850f9d62-aac7-4933-b036-5832e536db31",
+      "sequence": 4,
+      "pointSegmentId": null,
+      "activityCode": "PACKDOWN",
+      "activityLabelSnapshot": "Pack down and site tidy",
+      "startedAt": "2026-07-20T04:00:00.000Z",
+      "endedAt": "2026-07-20T04:30:00.000Z",
+      "allocation": { "type": "job", "jobId": "a1ea35ba-4309-498c-8e20-154589428d23", "jobNumber": "302684" },
+      "notes": null
+    }
+  ],
+  "items": [
+    {
+      "id": "0216b159-ea88-4508-b709-7dec07c52369",
+      "pointSegmentId": "99e21f39-c5d5-439e-a777-3d38527f19c5",
+      "itemType": "material",
+      "itemCode": "WT_CASING_STEEL_150",
+      "itemLabelSnapshot": "Steel casing 150 mm",
+      "quantity": 18.0,
+      "unit": "m",
+      "notes": null
+    },
+    {
+      "id": "3dd89db9-6df0-4bb0-aa43-9a5bf7b010bf",
+      "pointSegmentId": "99e21f39-c5d5-439e-a777-3d38527f19c5",
+      "itemType": "material",
+      "itemCode": "WT_WATER_DELIVERED",
+      "itemLabelSnapshot": "Water delivered",
+      "quantity": 5000,
+      "unit": "L",
+      "notes": null
+    }
+  ],
+  "clientAcknowledgement": {
+    "status": "signed_on_device",
+    "signerName": "Alex Morgan",
+    "clientEmail": "alex.morgan@client.co.nz",
+    "signedAt": "2026-07-20T04:38:00.000Z",
+    "signatureUploadId": "f77a0648-2e8e-494c-8a32-48c7b7070a0e"
+  },
+  "notes": "Circulation maintained. No incidents.",
+  "createdAt": "2026-07-19T18:25:00.000Z",
+  "updatedAt": "2026-07-20T04:40:00.000Z"
+}

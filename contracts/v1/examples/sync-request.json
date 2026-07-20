@@ -1,0 +1,22 @@
+{
+  "contractVersion": "1.0",
+  "batchId": "30bbd3c7-0cda-4803-b19e-28aa6ee86022",
+  "deviceId": "35c239e9-c547-4156-a9cd-125b11ee94cb",
+  "lastSyncCursor": "01K0M3YKJX2W5FRJH7D67PQT98",
+  "mutations": [
+    {
+      "mutationId": "fb04c64f-3399-4c4b-95aa-a1d7d600179c",
+      "entityType": "activity",
+      "entityId": "933f27c6-cd58-4052-be70-f2a4c74a11b7",
+      "operation": "upsert",
+      "baseRevision": 6,
+      "occurredAt": "2026-07-20T00:00:03.000Z",
+      "payload": {
+        "dailyLogId": "b462603d-bb8c-4bbf-ab81-cd64bb3ed329",
+        "sequence": 4,
+        "activityCode": "GT_ROTARY_SONIC",
+        "startedAt": "2026-07-20T00:00:00.000Z"
+      }
+    }
+  ]
+}

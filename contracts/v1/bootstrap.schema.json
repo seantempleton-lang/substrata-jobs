@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://substrata-jobs.mcm/contracts/v1/bootstrap.schema.json",
+  "title": "Substrata Jobs bootstrap response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "serverTime", "syncCursor", "retentionDays", "currentUser", "assignments", "catalogues"],
+  "properties": {
+    "contractVersion": { "const": "1.0" },
+    "serverTime": { "$ref": "common.schema.json#/$defs/instant" },
+    "syncCursor": { "type": "string", "minLength": 1 },
+    "retentionDays": { "const": 14 },
+    "currentUser": { "$ref": "common.schema.json#/$defs/userRef" },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assignmentId", "assignmentType", "startsOn", "endsOn", "personnel", "points"],
+        "properties": {
+          "assignmentId": { "$ref": "common.schema.json#/$defs/uuid" },
+          "assignmentType": { "enum": ["job", "maintenance", "downtime"] },
+          "startsOn": { "type": "string", "format": "date" },
+          "endsOn": { "type": "string", "format": "date" },
+          "title": { "type": "string" },
+          "job": { "oneOf": [{ "$ref": "common.schema.json#/$defs/jobRef" }, { "type": "null" }] },
+          "equipment": { "oneOf": [{ "$ref": "common.schema.json#/$defs/equipmentRef" }, { "type": "null" }] },
+          "personnel": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/userRef" } },
+          "points": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/pointRef" } },
+          "isMine": { "type": "boolean" },
+          "updatedAt": { "$ref": "common.schema.json#/$defs/instant" }
+        }
+      }
+    },
+    "catalogues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "effectiveFrom", "activities", "ancillaryCodes", "items"],
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "effectiveFrom": { "$ref": "common.schema.json#/$defs/instant" },
+        "activities": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/catalogueItem" } },
+        "ancillaryCodes": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/catalogueItem" } },
+        "items": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/catalogueItem" } }
+      }
+    }
+  }
+}

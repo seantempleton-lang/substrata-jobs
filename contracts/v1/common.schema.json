@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://substrata-jobs.mcm/contracts/v1/common.schema.json",
+  "title": "Substrata Jobs common contract types",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "instant": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "userRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userId", "employeeCode", "displayName"],
+      "properties": {
+        "userId": { "$ref": "#/$defs/uuid" },
+        "employeeCode": { "type": "string", "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "roleTitle": { "type": ["string", "null"] },
+        "appRole": {
+          "enum": ["FieldUser", "Maintenance", "Supervisor", "Administrator", "SuperUser"]
+        },
+        "division": { "enum": ["Water", "Geotech", "Operations", "Finance", "HSE", null] },
+        "region": { "enum": ["North", "South", null] }
+      }
+    },
+    "jobRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jobId", "jobNumber", "title", "division"],
+      "properties": {
+        "jobId": { "$ref": "#/$defs/uuid" },
+        "jobNumber": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "title": { "type": "string", "minLength": 1 },
+        "division": { "enum": ["Water", "Geotech"] },
+        "clientId": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
+        "clientName": { "type": ["string", "null"] },
+        "siteName": { "type": ["string", "null"] },
+        "siteAddress": { "type": ["string", "null"] }
+      }
+    },
+    "equipmentRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipmentId", "equipmentCode", "name"],
+      "properties": {
+        "equipmentId": { "$ref": "#/$defs/uuid" },
+        "equipmentCode": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "equipmentType": { "type": ["string", "null"] },
+        "division": { "enum": ["Water", "Geotech", null] }
+      }
+    },
+    "pointRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jobNumber", "pointId"],
+      "properties": {
+        "jobNumber": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "pointId": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "pointType": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "plannedDepthM": { "type": ["number", "null"], "minimum": 0 },
+        "location": { "type": ["string", "null"] }
+      }
+    },
+    "catalogueItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "label", "active"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9_.-]*$" },
+        "label": { "type": "string", "minLength": 1 },
+        "division": { "enum": ["Water", "Geotech", "Shared", null] },
+        "unit": { "type": ["string", "null"] },
+        "active": { "type": "boolean" },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "apiError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "retryable", "correlationId"],
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "field": { "type": ["string", "null"] },
+            "retryable": { "type": "boolean" },
+            "correlationId": { "$ref": "#/$defs/uuid" }
+          }
+        }
+      }
+    }
+  }
+}

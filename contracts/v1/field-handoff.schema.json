@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://substrata-jobs.mcm/contracts/v1/field-handoff.schema.json",
+  "title": "Substrata Jobs to Field handoff",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "dailyLogId", "jobNumber", "pointId", "requestedModule", "returnUrl"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "dailyLogId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "jobNumber": { "type": "string", "minLength": 1 },
+        "pointId": { "type": "string", "minLength": 1 },
+        "requestedModule": { "enum": ["project", "geology", "spt", "core", "installation", "backfill", "consumables", "photos"] },
+        "returnUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "handoffId", "launchUrl", "expiresAt"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "launchUrl": { "type": "string", "format": "uri" },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/instant" }
+      }
+    },
+    "resolvedContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "handoffId", "user", "dailyLogId", "PROJ_ID", "POINT_ID", "allowedModules", "returnUrl", "expiresAt"],
+      "properties": {
+        "contractVersion": { "const": "1.0" },
+        "handoffId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "user": { "$ref": "common.schema.json#/$defs/userRef" },
+        "dailyLogId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "PROJ_ID": { "type": "string" },
+        "POINT_ID": { "type": "string" },
+        "allowedModules": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "returnUrl": { "type": "string", "format": "uri" },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/instant" }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" },
+    { "$ref": "#/$defs/resolvedContext" }
+  ]
+}

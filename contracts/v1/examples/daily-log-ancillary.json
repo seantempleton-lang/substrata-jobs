@@ -1,0 +1,78 @@
+{
+  "contractVersion": "1.0",
+  "id": "34cc020a-cc12-4339-ac61-dae84184f1f0",
+  "logType": "ancillary",
+  "division": null,
+  "assignmentId": null,
+  "job": null,
+  "equipment": null,
+  "owner": {
+    "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+    "employeeCode": "EMP-001",
+    "displayName": "Sean Templeton",
+    "roleTitle": "Driller / leading hand",
+    "appRole": "FieldUser",
+    "division": "Geotech",
+    "region": "North"
+  },
+  "shift": {
+    "label": "day",
+    "startedAt": "2026-07-19T19:00:00.000Z",
+    "endedAt": "2026-07-20T03:30:00.000Z",
+    "timezone": "Pacific/Auckland"
+  },
+  "status": "submitted",
+  "serverRevision": 4,
+  "currentDocumentRevision": 1,
+  "carriedFromLogId": null,
+  "crew": [
+    {
+      "id": "c04bca0c-7998-4990-bc3f-5983fa42c018",
+      "userId": "5c59c68c-bcd2-4b78-b5d0-347e45d23b5a",
+      "employeeCodeSnapshot": "EMP-001",
+      "displayNameSnapshot": "Sean Templeton",
+      "roleSnapshot": "Leading hand",
+      "attendedFrom": "2026-07-19T19:00:00.000Z",
+      "attendedTo": "2026-07-20T03:30:00.000Z"
+    },
+    {
+      "id": "60207716-8684-4183-bae5-718476323404",
+      "userId": "96c251a6-a2ac-48dd-9d74-6657080ad696",
+      "employeeCodeSnapshot": "EMP-021",
+      "displayNameSnapshot": "Leah Baxter",
+      "roleSnapshot": "Drilling assistant",
+      "attendedFrom": "2026-07-19T19:00:00.000Z",
+      "attendedTo": "2026-07-20T03:30:00.000Z"
+    }
+  ],
+  "points": [],
+  "activities": [
+    {
+      "id": "f6af76d8-27d5-433e-91e4-d18b152a3920",
+      "sequence": 1,
+      "pointSegmentId": null,
+      "activityCode": "ANC_TRAVEL_NONJOB",
+      "activityLabelSnapshot": "Non-job travel",
+      "startedAt": "2026-07-19T19:00:00.000Z",
+      "endedAt": "2026-07-19T20:10:00.000Z",
+      "allocation": { "type": "ancillary", "ancillaryCode": "ANC_TRAVEL_NONJOB" },
+      "notes": "Yard to supplier and return."
+    },
+    {
+      "id": "25141d54-5161-415b-9d1e-64a2ac17e866",
+      "sequence": 2,
+      "pointSegmentId": null,
+      "activityCode": "ANC_WORKSHOP",
+      "activityLabelSnapshot": "Workshop maintenance",
+      "startedAt": "2026-07-19T20:10:00.000Z",
+      "endedAt": "2026-07-20T03:30:00.000Z",
+      "allocation": { "type": "ancillary", "ancillaryCode": "ANC_WORKSHOP" },
+      "notes": "N107 drill-head service."
+    }
+  ],
+  "items": [],
+  "clientAcknowledgement": { "status": "not_required" },
+  "notes": "Group ancillary record completed by leading hand.",
+  "createdAt": "2026-07-19T18:58:00.000Z",
+  "updatedAt": "2026-07-20T03:35:00.000Z"
+}

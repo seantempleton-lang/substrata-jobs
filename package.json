@@ -10,7 +10,8 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "lint": "eslint src --max-warnings 0"
+    "lint": "eslint src --max-warnings 0",
+    "contracts:validate": "node scripts/validate-contracts.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

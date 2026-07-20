@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://substrata-jobs.mcm/contracts/v1/daily-log.schema.json",
+  "title": "Substrata Jobs daily-log aggregate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "id", "logType", "owner", "shift", "status", "serverRevision", "crew", "points", "activities", "items", "clientAcknowledgement"],
+  "properties": {
+    "contractVersion": { "const": "1.0" },
+    "id": { "$ref": "common.schema.json#/$defs/uuid" },
+    "logType": { "enum": ["rig_shift", "ancillary"] },
+    "division": { "enum": ["Water", "Geotech", null] },
+    "assignmentId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+    "job": { "oneOf": [{ "$ref": "common.schema.json#/$defs/jobRef" }, { "type": "null" }] },
+    "equipment": { "oneOf": [{ "$ref": "common.schema.json#/$defs/equipmentRef" }, { "type": "null" }] },
+    "owner": { "$ref": "common.schema.json#/$defs/userRef" },
+    "shift": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "startedAt", "endedAt", "timezone"],
+      "properties": {
+        "label": { "enum": ["day", "night", "morning", "afternoon"] },
+        "startedAt": { "$ref": "common.schema.json#/$defs/instant" },
+        "endedAt": { "oneOf": [{ "$ref": "common.schema.json#/$defs/instant" }, { "type": "null" }] },
+        "timezone": { "const": "Pacific/Auckland" }
+      }
+    },
+    "status": { "enum": ["draft", "submitted", "under_review", "returned", "awaiting_driller_confirmation", "approved", "reopened"] },
+    "serverRevision": { "type": "integer", "minimum": 0 },
+    "currentDocumentRevision": { "type": "integer", "minimum": 0 },
+    "carriedFromLogId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+    "crew": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "userId", "employeeCodeSnapshot", "displayNameSnapshot", "roleSnapshot", "attendedFrom", "attendedTo"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/uuid" },
+          "userId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+          "employeeCodeSnapshot": { "type": ["string", "null"] },
+          "displayNameSnapshot": { "type": "string", "minLength": 1 },
+          "roleSnapshot": { "type": ["string", "null"] },
+          "attendedFrom": { "$ref": "common.schema.json#/$defs/instant" },
+          "attendedTo": { "oneOf": [{ "$ref": "common.schema.json#/$defs/instant" }, { "type": "null" }] }
+        }
+      }
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sequence", "jobNumber", "pointId", "startedAt", "endedAt", "startDepthM", "endDepthM", "endStatus"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/uuid" },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "jobNumber": { "type": "string" },
+          "pointId": { "type": "string" },
+          "startedAt": { "$ref": "common.schema.json#/$defs/instant" },
+          "endedAt": { "oneOf": [{ "$ref": "common.schema.json#/$defs/instant" }, { "type": "null" }] },
+          "startDepthM": { "type": ["number", "null"], "minimum": 0 },
+          "endDepthM": { "type": ["number", "null"], "minimum": 0 },
+          "endStatus": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "activities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sequence", "activityCode", "activityLabelSnapshot", "startedAt", "endedAt", "allocation"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/uuid" },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "pointSegmentId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+          "activityCode": { "type": "string" },
+          "activityLabelSnapshot": { "type": "string" },
+          "startedAt": { "$ref": "common.schema.json#/$defs/instant" },
+          "endedAt": { "oneOf": [{ "$ref": "common.schema.json#/$defs/instant" }, { "type": "null" }] },
+          "allocation": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "jobId", "jobNumber"],
+                "properties": {
+                  "type": { "const": "job" },
+                  "jobId": { "$ref": "common.schema.json#/$defs/uuid" },
+                  "jobNumber": { "type": "string" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "ancillaryCode"],
+                "properties": {
+                  "type": { "const": "ancillary" },
+                  "ancillaryCode": { "type": "string" }
+                }
+              }
+            ]
+          },
+          "notes": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "itemType", "itemCode", "itemLabelSnapshot", "quantity", "unit"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/uuid" },
+          "pointSegmentId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+          "itemType": { "enum": ["material", "service", "measurement", "subcontractor"] },
+          "itemCode": { "type": "string" },
+          "itemLabelSnapshot": { "type": "string" },
+          "quantity": { "type": "number", "minimum": 0 },
+          "unit": { "type": "string" },
+          "notes": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "clientAcknowledgement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "signerName", "clientEmail", "signedAt", "signatureUploadId"],
+          "properties": {
+            "status": { "const": "signed_on_device" },
+            "signerName": { "type": "string", "minLength": 1 },
+            "clientEmail": { "type": ["string", "null"], "format": "email" },
+            "signedAt": { "$ref": "common.schema.json#/$defs/instant" },
+            "signatureUploadId": { "$ref": "common.schema.json#/$defs/uuid" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reasonCode", "reasonNotes", "clientEmail"],
+          "properties": {
+            "status": { "const": "not_signed" },
+            "reasonCode": { "enum": ["CLIENT_UNAVAILABLE", "CLIENT_DECLINED", "REMOTE_UNATTENDED", "OTHER"] },
+            "reasonNotes": { "type": ["string", "null"] },
+            "clientEmail": { "type": ["string", "null"], "format": "email" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": { "status": { "const": "not_required" } }
+        }
+      ]
+    },
+    "notes": { "type": ["string", "null"] },
+    "createdAt": { "$ref": "common.schema.json#/$defs/instant" },
+    "updatedAt": { "$ref": "common.schema.json#/$defs/instant" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "logType": { "const": "rig_shift" } } },
+      "then": { "required": ["job", "equipment"], "properties": { "job": { "type": "object" }, "equipment": { "type": "object" } } }
+    },
+    {
+      "if": { "properties": { "logType": { "const": "ancillary" } } },
+      "then": { "properties": { "job": { "type": "null" }, "equipment": { "type": "null" }, "points": { "maxItems": 0 }, "clientAcknowledgement": { "properties": { "status": { "const": "not_required" } } } } }
+    }
+  ]
+}

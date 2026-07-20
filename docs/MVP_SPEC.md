@@ -562,3 +562,28 @@ Coolify is the intended hosting platform. The target topology is:
 - health checks, persistent storage only where required, and migration commands controlled during deployment
 
 The Step 1 prototype uses mocked data and device-local state. Database provisioning begins after the shared contracts in Step 2, avoiding premature schema commitments while the field workflow is still being validated.
+
+## 24. Implementation progress
+
+### Step 1 - Complete for review
+
+The repository contains the clickable mobile-first PWA prototype and walkthrough scenarios for Geotech, Water, and ancillary-only work. It is deployed independently through Coolify and remains intentionally disconnected from production data.
+
+### Step 2 - Proposed contract pack complete
+
+The proposed v1 integration contract is documented in `docs/INTEGRATION_CONTRACTS.md` and `contracts/v1`.
+
+The contract pack contains:
+
+- source-of-truth boundaries derived from the current Ops Manager and Field repositories
+- stable identity rules for users, assignments, jobs, equipment, daily logs, and points
+- the invariant `job_number = PROJ_ID`
+- a compact 14-day assignment/bootstrap contract
+- a complete daily-log aggregate for Water, Geotech, and ancillary records
+- client-generated UUIDs and idempotent offline sync rules
+- lifecycle and revision states for submission, review, return, confirmation, approval, and reopen
+- a short-lived, single-use Jobs-to-Field handoff contract
+- a proposed PostgreSQL `jobs_app` schema alongside Ops-owned master data
+- validated representative payloads for all three prototype scenarios
+
+No production migration has been created or applied. The database model remains a design reference until the shared-database and authentication assumptions receive implementation approval.
