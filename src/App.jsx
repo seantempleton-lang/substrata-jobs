@@ -34,7 +34,16 @@ import {
   X,
 } from "lucide-react";
 
-const PROTOTYPE_NOW = "10:42";
+function localTimeNow() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function defaultShiftFor(assignmentId) {
+  if (assignmentId === "water") return { startTime: "06:30", endTime: "16:30", shiftType: "day" };
+  if (assignmentId === "ancillary") return { startTime: "07:00", endTime: "15:30", shiftType: "day" };
+  return { startTime: "07:00", endTime: "17:00", shiftType: "day" };
+}
 
 const assignments = [
   {
@@ -117,6 +126,8 @@ function App({ foundation }) {
   const [toast, setToast] = useState("");
   const [activities, setActivities] = useState(() => activitySeed[selectedId]);
   const [point, setPoint] = useState(selectedId === "geotech" ? "BH5049" : selectedId === "water" ? "WB-03" : "No point");
+  const [currentTime, setCurrentTime] = useState(localTimeNow);
+  const [shift, setShift] = useState(() => defaultShiftFor(selectedId));
 
   const selected = useMemo(() => assignments.find((item) => item.id === selectedId), [selectedId]);
 
@@ -125,10 +136,23 @@ function App({ foundation }) {
     localStorage.setItem("sj-scenario", selectedId);
   }, [screen, selectedId]);
 
+  useEffect(() => {
+    const refreshTime = () => setCurrentTime(localTimeNow());
+    const timer = window.setInterval(refreshTime, 30_000);
+    window.addEventListener("focus", refreshTime);
+    document.addEventListener("visibilitychange", refreshTime);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshTime);
+      document.removeEventListener("visibilitychange", refreshTime);
+    };
+  }, []);
+
   const chooseAssignment = (id) => {
     setSelectedId(id);
     setActivities(activitySeed[id]);
     setPoint(id === "geotech" ? "BH5049" : id === "water" ? "WB-03" : "No point");
+    setShift(defaultShiftFor(id));
     setSent(false);
     setScreen("setup");
   };
@@ -139,13 +163,14 @@ function App({ foundation }) {
   };
 
   const addActivity = (name) => {
+    const timestamp = localTimeNow();
     setActivities((current) => {
-      const closed = current.map((item) => (item.end ? item : { ...item, end: PROTOTYPE_NOW }));
+      const closed = current.map((item) => (item.end ? item : { ...item, end: timestamp }));
       return [
         ...closed,
         {
           id: Date.now(),
-          start: PROTOTYPE_NOW,
+          start: timestamp,
           end: null,
           name,
           allocation: selected.job ? `Job ${selected.job}` : `Ancillary · ${name.replace("Non-job ", "")}`,
@@ -154,7 +179,7 @@ function App({ foundation }) {
       ];
     });
     setSheet(null);
-    flash(`Started ${name} at ${PROTOTYPE_NOW}`);
+    flash(`Started ${name} at ${timestamp}`);
   };
 
   const goBack = () => {
@@ -209,7 +234,7 @@ function App({ foundation }) {
         {screen === "assignments" && (
           <AssignmentsScreen myOnly={myOnly} setMyOnly={setMyOnly} chooseAssignment={chooseAssignment} openMenu={() => setSheet("prototype")} foundation={foundation} />
         )}
-        {screen === "setup" && <SetupScreen assignment={selected} start={() => setScreen("active")} />}
+        {screen === "setup" && <SetupScreen assignment={selected} start={(details) => { setShift(details); setScreen("active"); }} />}
         {screen === "active" && (
           <ActiveScreen
             assignment={selected}
@@ -217,16 +242,18 @@ function App({ foundation }) {
             setActiveTab={setActiveTab}
             activities={activities}
             point={point}
+            currentTime={currentTime}
+            shift={shift}
             setSheet={setSheet}
             review={() => setScreen("review")}
           />
         )}
-        {screen === "review" && <ReviewScreen assignment={selected} activities={activities} submit={() => setScreen("submitted")} />}
+        {screen === "review" && <ReviewScreen assignment={selected} activities={activities} shift={shift} submit={() => setScreen("submitted")} />}
         {screen === "submitted" && <SubmittedScreen assignment={selected} sent={sent} askSend={() => setSheet("send")} newLog={() => { resetPrototype(); }} />}
 
         {sheet === "activity" && (
           <BottomSheet title="Start next activity" close={() => setSheet(null)}>
-            <p className="sheet-intro">The current activity will end and the next will begin at <strong>{PROTOTYPE_NOW}</strong>. No gap is created.</p>
+            <p className="sheet-intro">The current activity will end and the next will begin at <strong>{currentTime}</strong>. No gap is created.</p>
             <div className="option-list">
               {activityOptions[selectedId].map((name) => (
                 <button className="option-row" key={name} onClick={() => addActivity(name)}><span>{name}</span><ArrowRight size={18} /></button>
@@ -248,7 +275,7 @@ function App({ foundation }) {
           </BottomSheet>
         )}
 
-        {sheet === "crew" && <CrewSheet assignment={selected} close={() => setSheet(null)} flash={flash} />}
+        {sheet === "crew" && <CrewSheet assignment={selected} close={() => setSheet(null)} flash={flash} currentTime={currentTime} />}
         {sheet === "site" && <SiteDataSheet assignment={selected} close={() => setSheet(null)} flash={flash} />}
         {sheet === "prototype" && (
           <BottomSheet title="Prototype tools" close={() => setSheet(null)}>
@@ -336,8 +363,10 @@ function AssignmentCard({ assignment, choose }) {
 
 function SetupScreen({ assignment, start }) {
   const isAncillary = assignment.id === "ancillary";
-  const [startTime, setStartTime] = useState(assignment.id === "water" ? "06:30" : "07:00");
-  const [endTime, setEndTime] = useState(assignment.id === "ancillary" ? "15:30" : assignment.id === "water" ? "16:30" : "17:00");
+  const defaults = defaultShiftFor(assignment.id);
+  const [startTime, setStartTime] = useState(defaults.startTime);
+  const [endTime, setEndTime] = useState(defaults.endTime);
+  const [shiftType, setShiftType] = useState(defaults.shiftType);
   return (
     <div className="screen setup-screen">
       <section className="record-hero">
@@ -350,10 +379,13 @@ function SetupScreen({ assignment, start }) {
       <div className="form-section">
         <div className="form-section-title"><span>SHIFT</span><small>Exact times feed future payroll</small></div>
         <div className="time-grid">
-          <label>Start time<div className="time-control"><input value={startTime} onChange={(event) => setStartTime(event.target.value)} /><button onClick={() => setStartTime(PROTOTYPE_NOW)}>Now</button></div></label>
-          <label>Expected end<div className="time-control"><input value={endTime} onChange={(event) => setEndTime(event.target.value)} /><button onClick={() => setEndTime(PROTOTYPE_NOW)}>Now</button></div></label>
+          <label>Start time<div className="time-control"><input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /><button type="button" onClick={() => setStartTime(localTimeNow())}>Now</button></div></label>
+          <label>Expected end<div className="time-control"><input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} /><button type="button" onClick={() => setEndTime(localTimeNow())}>Now</button></div></label>
         </div>
-        <div className="segment-control"><button className="active">Day</button><button>Night</button></div>
+        <div className="segment-control" role="group" aria-label="Shift type">
+          <button type="button" className={shiftType === "day" ? "active" : ""} aria-pressed={shiftType === "day"} onClick={() => setShiftType("day")}>Day</button>
+          <button type="button" className={shiftType === "night" ? "active" : ""} aria-pressed={shiftType === "night"} onClick={() => setShiftType("night")}>Night</button>
+        </div>
       </div>
 
       {!isAncillary && (
@@ -374,18 +406,18 @@ function SetupScreen({ assignment, start }) {
 
       <div className="sticky-action">
         <div className="offline-copy"><CloudOff size={16} /><span>Safe to start offline</span></div>
-        <button className="primary-button" onClick={start}>Start daily record<ArrowRight size={18} /></button>
+        <button className="primary-button" onClick={() => start({ startTime, endTime, shiftType })}>Start daily record<ArrowRight size={18} /></button>
       </div>
     </div>
   );
 }
 
-function ActiveScreen({ assignment, activeTab, setActiveTab, activities, point, setSheet, review }) {
+function ActiveScreen({ assignment, activeTab, setActiveTab, activities, point, currentTime, shift, setSheet, review }) {
   const current = activities.find((item) => !item.end);
   return (
     <div className="screen active-screen">
       <section className="active-header">
-        <div><span className="live-dot">LIVE</span><h2>{assignment.job ? `Job ${assignment.job}` : "Ancillary daily"}</h2><p>{assignment.rig === "No rig required" ? "Group record" : `Rig ${assignment.rig}`} · Shift started {assignment.id === "water" ? "06:30" : "07:00"}</p></div>
+        <div><span className="live-dot">LIVE</span><h2>{assignment.job ? `Job ${assignment.job}` : "Ancillary daily"}</h2><p>{assignment.rig === "No rig required" ? "Group record" : `Rig ${assignment.rig}`} · {shift.shiftType === "night" ? "Night" : "Day"} shift started {shift.startTime}</p></div>
         <div className="elapsed"><span>ELAPSED</span><strong>{assignment.id === "water" ? "4h 12m" : "3h 42m"}</strong></div>
       </section>
 
@@ -406,7 +438,7 @@ function ActiveScreen({ assignment, activeTab, setActiveTab, activities, point, 
             <div className="allocation-chip"><BriefcaseBusiness size={15} />{current?.allocation}</div>
           </div>
 
-          <button className="primary-button large" onClick={() => setSheet("activity")}><Plus size={20} />Start next activity <span>{PROTOTYPE_NOW}</span></button>
+          <button className="primary-button large" onClick={() => setSheet("activity")}><Plus size={20} />Start next activity <span>{currentTime}</span></button>
 
           <div className="quick-grid">
             {assignment.points.length > 0 && <button onClick={() => setSheet("point")}><MapPin size={20} /><span>Change point</span></button>}
@@ -435,7 +467,7 @@ function ActiveScreen({ assignment, activeTab, setActiveTab, activities, point, 
           <div className="tab-heading"><div><p className="date-label">WHOLE-CREW RECORD</p><h3>Crew attendance</h3></div><button className="icon-button" onClick={() => setSheet("crew")}><Plus size={19} /></button></div>
           {assignment.crew.map((name, index) => (
             <div className="attendance-card" key={name}>
-              <span className="avatar large-avatar">{initials(name)}</span><div><strong>{name}</strong><p>{index === 0 ? "Driller / leading hand" : "Drilling assistant"}</p><span><Clock3 size={14} />{assignment.id === "water" ? "06:30" : "07:00"} – {index === 1 && assignment.id === "geotech" ? "10:15" : "On shift"}</span></div>
+              <span className="avatar large-avatar">{initials(name)}</span><div><strong>{name}</strong><p>{index === 0 ? "Driller / leading hand" : "Drilling assistant"}</p><span><Clock3 size={14} />{shift.startTime} – {index === 1 && assignment.id === "geotech" ? "10:15" : "On shift"}</span></div>
               {index === 1 && assignment.id === "geotech" ? <span className="left-chip">LEFT</span> : <span className="on-chip">ON</span>}
             </div>
           ))}
@@ -463,14 +495,14 @@ function ActiveScreen({ assignment, activeTab, setActiveTab, activities, point, 
   );
 }
 
-function ReviewScreen({ assignment, activities, submit }) {
+function ReviewScreen({ assignment, activities, shift, submit }) {
   const [clientMode, setClientMode] = useState(assignment.id === "water" ? "signature" : "reason");
   return (
     <div className="screen review-screen">
       <section className="review-hero"><p className="date-label">SHIFT COMPLETE</p><h2>Review daily record</h2><p>{assignment.job ? `Job ${assignment.job} · Rig ${assignment.rig}` : "Group ancillary record"}</p></section>
 
       <div className="summary-grid">
-        <div><span>SHIFT</span><strong>{assignment.id === "water" ? "06:30–16:30" : assignment.id === "ancillary" ? "07:00–15:30" : "07:00–17:00"}</strong></div>
+        <div><span>SHIFT</span><strong>{shift.startTime}–{shift.endTime} · {shift.shiftType === "night" ? "Night" : "Day"}</strong></div>
         <div><span>CREW</span><strong>{assignment.crew.length} people</strong></div>
         <div><span>ACTIVITIES</span><strong>{activities.length} entries</strong></div>
         <div><span>POINTS</span><strong>{assignment.points.length || "N/A"}</strong></div>
@@ -524,14 +556,14 @@ function SubmittedScreen({ assignment, sent, askSend, newLog }) {
   );
 }
 
-function CrewSheet({ assignment, close, flash }) {
+function CrewSheet({ assignment, close, flash, currentTime }) {
   const [left, setLeft] = useState(assignment.id === "geotech");
   return (
     <BottomSheet title="Crew attendance" close={close}>
       {assignment.crew.map((name, index) => (
         <div className="crew-sheet-row" key={name}><span className="avatar light-avatar">{initials(name)}</span><div><strong>{name}</strong><small>{index === 0 ? "Driller / leading hand" : "Drilling assistant"}</small></div>{index === 1 && left ? <button className="time-tag" onClick={() => setLeft(false)}>Left 10:15</button> : <button className="on-tag" onClick={() => { if (index === 1) setLeft(true); }}>On shift</button>}</div>
       ))}
-      <button className="secondary-button"><Plus size={18} />Add crew member at {PROTOTYPE_NOW}</button>
+      <button className="secondary-button"><Plus size={18} />Add crew member at {currentTime}</button>
       <button className="primary-button" onClick={() => { close(); flash("Crew attendance saved"); }}>Save attendance</button>
     </BottomSheet>
   );
