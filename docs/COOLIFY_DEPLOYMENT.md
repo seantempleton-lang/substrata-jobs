@@ -14,6 +14,8 @@ The container serves the PWA and `/api/v1` from the same origin. No separate ngi
 
 ## Required environment variables
 
+Configure all variables in this section as **runtime only** in Coolify. Disable **Available at Buildtime**, especially for `DATABASE_URL` and `MIGRATION_DATABASE_URL`. The PWA and API are built into one image and do not require database credentials during the image build.
+
 ```dotenv
 NODE_ENV=production
 PORT=8080
@@ -39,6 +41,16 @@ PGPOOL_MAX=10
 `MIGRATION_DATABASE_URL` is only needed when the runtime Jobs role cannot create or alter tables in `jobs_app`. If it is supplied, the migration runner uses it while the API continues using the restricted `DATABASE_URL`.
 
 Do not set `VITE_BYPASS_AUTH=true` in Coolify. It is a local prototype escape hatch only.
+
+### Build-time variable rule
+
+No current production variable needs to be available at build time. In particular:
+
+- `NODE_ENV=production` at build time can cause npm to omit Vite and fail with `vite: not found`.
+- Database URLs supplied at build time may be exposed to Docker build metadata, cache, or logs.
+- The Dockerfile explicitly installs development dependencies only in its isolated build stage and removes them from the runtime stage.
+
+Keep `NODE_ENV=production` enabled at runtime. Only future public `VITE_*` configuration values may be made available at build time; secrets must never use a `VITE_*` prefix.
 
 ## Restricted PostgreSQL role
 
