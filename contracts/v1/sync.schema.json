@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://substrata-jobs.mcm/contracts/v1/sync.schema.json",
+  "$id": "https://substrata-jobs.drilling.co.nz/contracts/v1/sync.schema.json",
   "title": "Substrata Jobs offline sync contract",
   "$defs": {
     "mutation": {

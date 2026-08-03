@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://substrata-jobs.mcm/contracts/v1/common.schema.json",
+  "$id": "https://substrata-jobs.drilling.co.nz/contracts/v1/common.schema.json",
   "title": "Substrata Jobs common contract types",
   "$defs": {
     "uuid": {

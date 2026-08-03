@@ -4,7 +4,7 @@
 
 Deploy Substrata Jobs as a separate Dockerfile application in the same Coolify production environment as Ops Manager.
 
-- Domain: `https://substrata-jobs.mcm`
+- Domain: `https://substrata-jobs.drilling.co.nz`
 - Container port: `8080`
 - Health check: `/health`
 - Build pack: Dockerfile
@@ -20,12 +20,12 @@ Configure all variables in this section as **runtime only** in Coolify. Disable 
 NODE_ENV=production
 PORT=8080
 TRUST_PROXY=1
-APP_BASE_URL=https://substrata-jobs.mcm
+APP_BASE_URL=https://substrata-jobs.drilling.co.nz
 DATABASE_URL=postgresql://substrata_jobs:<password>@<postgres-internal-host>:5432/<ops-database>
 PGSSLMODE=disable
 RUN_MIGRATIONS=true
 SESSION_DURATION_DAYS=30
-COOKIE_SECURE=auto
+COOKIE_SECURE=true
 ```
 
 Optional:
