@@ -588,7 +588,7 @@ The contract pack contains:
 
 No production migration has been created or applied. The database model remains a design reference until the shared-database and authentication assumptions receive implementation approval.
 
-### Step 3 - Foundation implemented; deployment verification pending
+### Step 3 - Foundation deployed and verified
 
 The shared-cluster and shared-identity assumptions were approved on 20 July 2026. The repository now includes:
 
@@ -602,4 +602,4 @@ The shared-cluster and shared-identity assumptions were approved on 20 July 2026
 - health endpoints separating container health from database/integration health
 - restricted PostgreSQL role and Coolify environment guidance
 
-Step 3 reaches its exit criterion after these components are deployed to staging and verified against the production-shaped Ops database and phone network conditions. Daily-log persistence begins in Step 4 rather than the foundation migration.
+The foundation was deployed and its shared Ops login and current prototype behaviour were verified on 3 September 2026. Daily-log persistence begins in Step 4 rather than the foundation migration.

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "contracts", "v1");
 
@@ -57,23 +59,39 @@ const schemaFiles = [
   "field-handoff.schema.json",
 ];
 
+const schemas = [];
 for (const file of schemaFiles) {
   const schema = await readJson(file);
   assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.ok(schema.$id, `${file} must have an ID`);
+  schemas.push(schema);
+}
+
+const ajv = new Ajv2020({ allErrors: true, strict: false });
+addFormats(ajv);
+for (const schema of schemas) ajv.addSchema(schema);
+
+function validateSchema(schemaName, payload, label) {
+  const schema = schemas.find((candidate) => candidate.$id.endsWith(`/${schemaName}`));
+  const validate = ajv.getSchema(schema.$id);
+  assert.ok(validate(payload), `${label} failed JSON Schema validation:\n${ajv.errorsText(validate.errors, { separator: "\n" })}`);
 }
 
 const bootstrap = await readJson("examples/bootstrap-response.json");
+validateSchema("bootstrap.schema.json", bootstrap, "bootstrap response");
 assert.equal(bootstrap.contractVersion, "1.0");
 assert.equal(bootstrap.retentionDays, 14);
 assert.ok(bootstrap.assignments.every((assignment) => assignment.personnel.every((person) => person.userId)), "planned personnel need stable user IDs");
 assert.ok(bootstrap.assignments.every((assignment) => !assignment.job || assignment.points.every((point) => point.jobNumber === assignment.job.jobNumber)), "assignment point job numbers must match");
 
 for (const file of ["daily-log-geotech.json", "daily-log-water.json", "daily-log-ancillary.json"]) {
-  validateTimeline(await readJson(`examples/${file}`));
+  const log = await readJson(`examples/${file}`);
+  validateSchema("daily-log.schema.json", log, file);
+  validateTimeline(log);
 }
 
 const sync = await readJson("examples/sync-request.json");
+validateSchema("sync.schema.json", sync, "sync request");
 assertUuid(sync.batchId, "sync batch ID");
 assertUuid(sync.deviceId, "sync device ID");
 assert.ok(sync.mutations.length > 0 && sync.mutations.length <= 100);
@@ -84,6 +102,8 @@ for (const mutation of sync.mutations) {
 
 const handoffRequest = await readJson("examples/field-handoff-request.json");
 const handoffResponse = await readJson("examples/field-handoff-response.json");
+validateSchema("field-handoff.schema.json", handoffRequest, "field handoff request");
+validateSchema("field-handoff.schema.json", handoffResponse, "field handoff response");
 assert.equal(handoffRequest.jobNumber, "302670");
 assert.equal(handoffRequest.pointId, "BH5049");
 assert.ok(new URL(handoffRequest.returnUrl).protocol === "https:");

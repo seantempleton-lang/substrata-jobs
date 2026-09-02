@@ -40,3 +40,5 @@ npm.cmd run contracts:validate
 ```
 
 The included `Dockerfile` serves the PWA and same-origin Jobs API from Node and is suitable for a Coolify Dockerfile deployment. The container exposes port `8080` and provides `/health` for health checks. See [docs/COOLIFY_DEPLOYMENT.md](docs/COOLIFY_DEPLOYMENT.md) for the database role, environment variables, networking and first-deployment checks.
+
+For a production-shaped local Docker environment with a private fixture database, see [docs/LOCAL_DOCKER.md](docs/LOCAL_DOCKER.md).

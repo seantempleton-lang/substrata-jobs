@@ -12,7 +12,8 @@
     "dev:web": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src server scripts test --max-warnings 0",
+    "test": "node --test",
     "contracts:validate": "node scripts/validate-contracts.mjs",
     "db:migrate": "node scripts/db-migrate.mjs up",
     "db:migrate:status": "node scripts/db-migrate.mjs status",
@@ -28,6 +29,8 @@
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "concurrently": "^9.2.1",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.1.0",

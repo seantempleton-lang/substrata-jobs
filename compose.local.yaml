@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: substrata_jobs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-only-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d substrata_jobs"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - local-postgres:/var/lib/postgresql/data
+      - ./test/fixtures/ops-schema.sql:/docker-entrypoint-initdb.d/001-ops-schema.sql:ro
+
+  jobs:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      TRUST_PROXY: 1
+      APP_BASE_URL: http://localhost:18080
+      DATABASE_URL: postgresql://postgres:local-only-password@postgres:5432/substrata_jobs
+      PGSSLMODE: disable
+      RUN_MIGRATIONS: "true"
+      SESSION_DURATION_DAYS: 1
+      COOKIE_SECURE: "false"
+    ports:
+      - "127.0.0.1:18080:8080"
+
+volumes:
+  local-postgres:

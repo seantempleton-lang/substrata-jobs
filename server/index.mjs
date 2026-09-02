@@ -7,6 +7,7 @@ import express from "express";
 import { clearSessionCookie, login, logout, requireAuth, setSessionCookie } from "./auth.mjs";
 import { closePool, query } from "./db.mjs";
 import { getBootstrap, recordSyncProbe } from "./repository.mjs";
+import { applySyncBatch } from "./dailyLogs.mjs";
 
 const app = express();
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -95,6 +96,15 @@ app.post("/api/v1/sync/probe", requireAuth, async (req, res) => {
   try {
     const result = await recordSyncProbe({ userId: req.auth.user.userId, ...req.body });
     res.status(result.status === "applied" ? 201 : 200).json({ contractVersion: "1.0", ...result });
+  } catch (error) {
+    apiError(res, error);
+  }
+});
+
+app.post("/api/v1/sync", requireAuth, async (req, res) => {
+  try {
+    const payload = await applySyncBatch({ body: req.body, user: req.auth.user });
+    res.json(payload);
   } catch (error) {
     apiError(res, error);
   }

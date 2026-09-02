@@ -60,3 +60,11 @@ export function sendSyncProbe({ deviceId, probeId }) {
     }),
   });
 }
+
+export function sendSyncBatch({ batchId, deviceId, lastSyncCursor = null, mutations }) {
+  return api("/api/v1/sync", {
+    method: "POST",
+    headers: { "Idempotency-Key": batchId },
+    body: JSON.stringify({ contractVersion: "1.0", batchId, deviceId, lastSyncCursor, mutations }),
+  });
+}

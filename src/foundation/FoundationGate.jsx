@@ -1,27 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, CloudOff, Database, LoaderCircle, LockKeyhole, RefreshCw } from "lucide-react";
 import { getBootstrap, getSession, login, logout, sendSyncProbe } from "./api";
+import { getDailyProbeIdentity, getDeviceIdentity } from "./device";
 import { cacheFoundation, clearFoundationCache, getCachedFoundation } from "./offlineStore";
-
-function deviceIdentity() {
-  let id = localStorage.getItem("substrata-jobs-device-id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("substrata-jobs-device-id", id);
-  }
-  return id;
-}
-
-function dailyProbeIdentity() {
-  const day = new Date().toISOString().slice(0, 10);
-  const key = `substrata-jobs-probe-${day}`;
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-  return id;
-}
 
 export default function FoundationGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
@@ -37,7 +18,7 @@ export default function FoundationGate({ children }) {
       const session = await getSession();
       const bootstrap = await getBootstrap();
       await cacheFoundation({ session, bootstrap, cachedAt: new Date().toISOString() });
-      try { await sendSyncProbe({ deviceId: deviceIdentity(), probeId: dailyProbeIdentity() }); } catch { /* bootstrap remains usable if probe fails */ }
+      try { await sendSyncProbe({ deviceId: getDeviceIdentity(), probeId: getDailyProbeIdentity() }); } catch { /* bootstrap remains usable if probe fails */ }
       setState({ status: "ready", mode: "live", user: session.user, assignments: bootstrap.assignments, bootstrap });
     } catch (error) {
       if (error.status === 401) {

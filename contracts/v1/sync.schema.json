@@ -15,7 +15,13 @@
         "baseRevision": { "type": "integer", "minimum": 0 },
         "occurredAt": { "$ref": "common.schema.json#/$defs/instant" },
         "payload": { "type": ["object", "null"] }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "entityType": { "const": "daily_log" }, "operation": { "const": "upsert" } } },
+          "then": { "properties": { "payload": { "$ref": "daily-log.schema.json" } } }
+        }
+      ]
     },
     "acknowledgement": {
       "type": "object",
