@@ -6,31 +6,32 @@ The initial product and architecture plan is documented in [docs/MVP_SPEC.md](do
 
 The proposed cross-system v1 contract is documented in [docs/INTEGRATION_CONTRACTS.md](docs/INTEGRATION_CONTRACTS.md), with machine-readable schemas and examples under [contracts/v1](contracts/v1).
 
-## Step 1 prototype
+## Core field workflow (Step 4)
 
-The current application is a mobile-first, clickable UX prototype. It uses realistic mocked records and browser-local state; it does not yet connect to Ops Manager, Field, payroll, email, or a production database.
+The application uses live Ops assignments, catalogues and personnel. Rig and ancillary logs, activities, point progress, attendance, site items, setup and notes are saved in IndexedDB before authenticated API synchronization to PostgreSQL. Unfinished editor inputs also survive app closure. Mocked walkthrough screens and the authentication bypass have been removed.
 
-The suggested field-team walkthrough and feedback checklist are in [docs/PROTOTYPE_WALKTHROUGH.md](docs/PROTOTYPE_WALKTHROUGH.md).
+Submission, signatures, PDFs and email remain Step 5 work. Supervisors can inspect synchronized structured records through the read-only office view; approval and corrections remain Step 6 work.
 
 ```powershell
 npm.cmd install
 npm.cmd run dev
 ```
 
-For UI-only prototype work without PostgreSQL or authentication:
+Use the isolated Docker database and Field fixture for integration tests:
 
 ```powershell
-$env:VITE_BYPASS_AUTH='true'
-npm.cmd run dev:web
+docker compose -f compose.local.yaml up --build -d
+npx.cmd playwright install chromium
+npm.cmd run test:e2e
 ```
 
-Never enable that flag in Coolify.
+See [docs/LOCAL_DOCKER.md](docs/LOCAL_DOCKER.md) for fixture accounts. Unit and queue tests use `npm.cmd test`; lint uses `npm.cmd run lint`.
 
 For a production-style local build:
 
 ```powershell
 npm.cmd run build
-npm.cmd run preview
+npm.cmd start
 ```
 
 Validate the representative integration payloads with:

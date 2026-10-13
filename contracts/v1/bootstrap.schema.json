@@ -16,6 +16,7 @@
       "uniqueItems": true,
       "items": { "type": "string" }
     },
+    "personnel": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/userRef" } },
     "assignments": {
       "type": "array",
       "items": {
@@ -33,6 +34,7 @@
           "personnel": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/userRef" } },
           "points": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/pointRef" } },
           "isMine": { "type": "boolean" },
+          "pointFeedAvailable": { "type": "boolean" },
           "updatedAt": { "$ref": "common.schema.json#/$defs/instant" }
         }
       }

@@ -23,7 +23,8 @@ function copy(log) {
 }
 
 function touch(log, at) {
-  log.updatedAt = instant(at, "updatedAt");
+  instant(at, "occurredAt");
+  log.updatedAt = new Date().toISOString();
   return log;
 }
 
@@ -86,17 +87,21 @@ function pointFromReference(reference, startedAt, sequence = 1, startDepthM = nu
   };
 }
 
-export function createDailyLog({ assignment = null, owner, shiftLabel = "day", startedAt, initialActivity, ancillary = false }) {
+export function createDailyLog({ assignment = null, owner, shiftLabel = "day", startedAt, initialActivity, ancillary = false, personnel, startingPoint, startDepthM = null, setup = {}, previous = null }) {
   const start = instant(startedAt, "shift.startedAt");
+  if (startDepthM != null && (!Number.isFinite(startDepthM) || startDepthM < 0)) fail("POINT_DEPTH_INVALID", "Starting depth must be a non-negative number.", "points");
+  if (previous && Date.parse(start) < Date.parse(previous.shift.endedAt)) fail("HANDOVER_TIME_INVALID", "The next shift must start after the previous shift finishes.", "shift");
   const isAncillary = ancillary || !assignment?.job;
   const job = isAncillary ? null : assignment.job;
   const equipment = isAncillary ? null : assignment.equipment;
   if (!isAncillary && (!job || !equipment)) fail("RIG_CONTEXT_REQUIRED", "A rig shift requires a job and equipment.", "assignment");
   if (!initialActivity?.code || !initialActivity?.label) fail("ACTIVITY_REQUIRED", "An initial activity is required.", "activities");
 
-  const personnel = assignment?.personnel?.length ? assignment.personnel : [owner];
-  const pointReference = !isAncillary ? assignment?.points?.[0] : null;
-  const point = pointReference ? pointFromReference(pointReference, start) : null;
+  const crew = personnel ?? (assignment?.personnel?.length ? assignment.personnel : [owner]);
+  if (!crew.length) fail("CREW_REQUIRED", "Select at least one crew member.", "crew");
+  const pointReference = !isAncillary ? (startingPoint === undefined ? assignment?.points?.[0] : startingPoint) : null;
+  if (pointReference && pointReference.jobNumber !== job.jobNumber) fail("POINT_JOB_MISMATCH", "The point must belong to this job.", "points");
+  const point = pointReference ? pointFromReference(pointReference, start, 1, startDepthM) : null;
   const allocation = isAncillary
     ? { type: "ancillary", ancillaryCode: initialActivity.ancillaryCode || initialActivity.code }
     : { type: "job", jobId: job.jobId, jobNumber: job.jobNumber };
@@ -115,8 +120,10 @@ export function createDailyLog({ assignment = null, owner, shiftLabel = "day", s
     status: "draft",
     serverRevision: 0,
     currentDocumentRevision: 0,
-    carriedFromLogId: null,
-    crew: crewFromAssignment(personnel, start),
+    carriedFromLogId: previous?.id ?? null,
+    assignmentSnapshot: assignment ? structuredClone(assignment) : null,
+    setup: { ...setup },
+    crew: crewFromAssignment(crew, start),
     points: point ? [point] : [],
     activities: [{
       id: crypto.randomUUID(),
@@ -168,15 +175,22 @@ export function changePoint(source, { nextPoint, endDepthM, endStatus, nextStart
   if (active) {
     after(at, active.startedAt, "POINT_DURATION_INVALID", "The next point must start after the current point.", "points");
     if (!endStatus) fail("POINT_STATUS_REQUIRED", "The outgoing point requires a status.", "points");
-    if (endDepthM == null || Number(endDepthM) < 0) fail("POINT_DEPTH_REQUIRED", "The outgoing point requires a valid finishing depth.", "points");
+    if (endDepthM == null || !Number.isFinite(Number(endDepthM)) || Number(endDepthM) < 0) fail("POINT_DEPTH_REQUIRED", "The outgoing point requires a valid finishing depth.", "points");
     if (active.startDepthM != null && Number(endDepthM) < active.startDepthM) fail("POINT_DEPTH_INVALID", "Finishing depth cannot be less than starting depth.", "points");
     active.endedAt = at;
     active.endDepthM = Number(endDepthM);
     active.endStatus = endStatus;
   }
-  if (!nextPoint?.jobNumber || !nextPoint?.pointId) fail("POINT_REQUIRED", "The next point requires a job number and point ID.", "points");
-  if (nextPoint.jobNumber !== log.job.jobNumber) fail("POINT_JOB_MISMATCH", "The point must belong to the daily log job.", "points");
-  log.points.push(pointFromReference(nextPoint, at, log.points.length + 1, nextStartDepthM));
+  if (nextPoint && (!nextPoint.jobNumber || !nextPoint.pointId)) fail("POINT_REQUIRED", "The next point requires a job number and point ID.", "points");
+  if (nextPoint && nextPoint.jobNumber !== log.job.jobNumber) fail("POINT_JOB_MISMATCH", "The point must belong to the daily log job.", "points");
+  if (nextStartDepthM != null && (!Number.isFinite(nextStartDepthM) || nextStartDepthM < 0)) fail("POINT_DEPTH_INVALID", "Starting depth must be a non-negative number.", "points");
+  if (nextPoint) log.points.push(pointFromReference(nextPoint, at, log.points.length + 1, nextStartDepthM));
+  // A point boundary also divides the active activity so earlier work keeps its point.
+  const activity = currentActivity(log);
+  after(at, activity.startedAt, "ACTIVITY_DURATION_INVALID", "Change point after the current activity starts.", "activities");
+  activity.endedAt = at;
+  log.activities.push({ ...activity, id: crypto.randomUUID(), sequence: log.activities.length + 1,
+    pointSegmentId: nextPoint ? log.points.at(-1).id : null, startedAt: at, endedAt: null });
   return touch(log, at);
 }
 
@@ -192,8 +206,9 @@ export function endShift(source, { endDepthM = null, endStatus = null } = {}, oc
   for (const attendance of log.crew) if (!attendance.attendedTo) attendance.attendedTo = at;
 
   const point = currentPoint(log);
-  if (point && endStatus) {
-    if (endDepthM == null || Number(endDepthM) < 0) fail("POINT_DEPTH_REQUIRED", "The active point requires a valid finishing depth.", "points");
+  if (point) {
+    if (!endStatus) fail("POINT_STATUS_REQUIRED", "Choose the final point status.", "points");
+    if (endDepthM == null || !Number.isFinite(Number(endDepthM)) || Number(endDepthM) < (point.startDepthM ?? 0)) fail("POINT_DEPTH_REQUIRED", "Finishing depth must be valid and at least the starting depth.", "points");
     point.endedAt = at;
     point.endDepthM = Number(endDepthM);
     point.endStatus = endStatus;
@@ -217,6 +232,7 @@ export function validationErrors(log) {
   }
   if (activities.at(-1)?.endedAt !== log.shift.endedAt) add("ACTIVITY_TIMELINE_END", "The final activity must end with the shift.", "activities");
   if (log.crew.some((attendance) => !attendance.attendedTo)) add("ATTENDANCE_UNFINISHED", "All crew attendance periods must be finished.", "crew");
+  errors.push(...draftErrors(log));
 
   if (log.logType === "rig_shift") {
     if (!log.job || !log.equipment) add("RIG_CONTEXT_REQUIRED", "A rig shift requires a job and equipment.", "job");
@@ -243,3 +259,92 @@ export function assertSubmittable(log) {
 }
 
 export const dailyLogContract = { version: CONTRACT_VERSION, timezone: TIMEZONE };
+
+export function draftErrors(log) {
+  const errors = [];
+  const add = (code, message, field) => errors.push({ code, message, field });
+  const start = Date.parse(log.shift.startedAt), finish = log.shift.endedAt ? Date.parse(log.shift.endedAt) : Infinity;
+  if (!Number.isFinite(start) || finish <= start) add("SHIFT_DURATION_INVALID", "Shift finish must follow its start.", "shift");
+  if (!log.crew.length) add("CREW_REQUIRED", "At least one crew member is required.", "crew");
+  for (const period of log.crew) {
+    const from = Date.parse(period.attendedFrom), to = period.attendedTo ? Date.parse(period.attendedTo) : Infinity;
+    if (!Number.isFinite(from) || from < start || from >= finish || to <= from || to > finish || (finish !== Infinity && !period.attendedTo))
+      add("ATTENDANCE_TIME_INVALID", `${period.displayNameSnapshot}: attendance must fit within the shift and have a positive duration.`, "crew");
+    if (log.crew.some((other) => other.id !== period.id && (period.userId ? other.userId === period.userId : other.displayNameSnapshot === period.displayNameSnapshot) &&
+      Date.parse(other.attendedFrom) < to && (other.attendedTo ? Date.parse(other.attendedTo) : Infinity) > from))
+      add("ATTENDANCE_OVERLAP", `${period.displayNameSnapshot} has overlapping attendance periods.`, "crew");
+  }
+  const activities = [...log.activities].sort((a, b) => a.sequence - b.sequence);
+  for (let index = 0; index < activities.length; index++) {
+    const activity = activities[index];
+    if (Date.parse(activity.startedAt) < start || (activity.endedAt && Date.parse(activity.endedAt) <= Date.parse(activity.startedAt)) ||
+      (activity.endedAt && Date.parse(activity.endedAt) > finish) || (index && activities[index - 1].endedAt !== activity.startedAt))
+      add("ACTIVITY_TIME_INVALID", "Activities must be continuous and have a positive duration within the shift.", "activities");
+    if (activity.pointSegmentId && !log.points.some(point => point.id === activity.pointSegmentId)) add("ACTIVITY_POINT_INVALID", "Activity point does not belong to this log.", "activities");
+    if (activity.allocation?.type === "job" && (log.logType === "ancillary" || !activity.allocation.jobId || !activity.allocation.jobNumber))
+      add("ACTIVITY_JOB_MISMATCH", "Job allocation needs a job reference and is only available on rig logs.", "activities");
+    if (!activity.allocation || (activity.allocation.type === "ancillary" && !activity.allocation.ancillaryCode)) add("ALLOCATION_REQUIRED", "Each activity needs a payroll allocation.", "activities");
+  }
+  if (activities[0]?.startedAt !== log.shift.startedAt || activities.at(-1)?.endedAt !== log.shift.endedAt)
+    add("ACTIVITY_BOUNDARY_INVALID", "First and last activities must match the shift boundaries.", "activities");
+  if (activities.filter(activity => !activity.endedAt).length !== (log.shift.endedAt ? 0 : 1)) add("ACTIVITY_CURRENT_INVALID", "Only the final activity may be unfinished during an open shift.", "activities");
+  for (const point of log.points) {
+    if (point.endedAt && (!point.endStatus || point.endDepthM == null)) add("POINT_UNFINISHED", "A finished point needs its depth and status.", "points");
+    if ([point.startDepthM, point.endDepthM].some(value => value != null && (!Number.isFinite(value) || value < 0)) ||
+      (point.endDepthM != null && point.endDepthM < (point.startDepthM ?? 0))) add("POINT_DEPTH_INVALID", "Point depths must be valid and cannot decrease.", "points");
+    if (Date.parse(point.startedAt) < start || (point.endedAt && (Date.parse(point.endedAt) <= Date.parse(point.startedAt) || Date.parse(point.endedAt) > finish)))
+      add("POINT_TIME_INVALID", "Point work must fit within the shift.", "points");
+  }
+  for (const item of log.items) if (!Number.isFinite(item.quantity) || item.quantity < 0 || !item.unit?.trim() || !item.itemLabelSnapshot?.trim())
+    add("ITEM_INVALID", "Items require a description, unit and non-negative quantity.", "items");
+  return errors;
+}
+
+export function attendanceConflicts(log, records) {
+  const conflicts = [];
+  for (const period of log.crew) {
+    if (!period.userId) continue;
+    for (const other of records.filter(record => record.id !== log.id)) {
+      if (other.crew.some(candidate => candidate.userId === period.userId &&
+        Date.parse(candidate.attendedFrom) < (period.attendedTo ? Date.parse(period.attendedTo) : Infinity) &&
+        (candidate.attendedTo ? Date.parse(candidate.attendedTo) : Infinity) > Date.parse(period.attendedFrom)))
+        conflicts.push({ person: period.displayNameSnapshot, otherLogId: other.id, otherReference: other.job?.jobNumber || "Ancillary workday" });
+    }
+  }
+  return conflicts;
+}
+
+export function editDailyLog(source, edit, at = new Date().toISOString()) {
+  assertDraft(source);
+  const log = copy(source);
+  edit(log);
+  const errors = draftErrors(log);
+  if (errors.length) fail(errors[0].code, errors[0].message, errors[0].field);
+  return touch(log, at);
+}
+
+export function correctActivity(source, id, details) {
+  return editDailyLog(source, log => {
+    const index = log.activities.findIndex(activity => activity.id === id);
+    if (index < 0) fail("ACTIVITY_NOT_FOUND", "Activity was not found.", "activities");
+    const activity = log.activities[index];
+    Object.assign(activity, details);
+    activity.startedAt = instant(activity.startedAt, "activities.startedAt");
+    activity.endedAt = activity.endedAt ? instant(activity.endedAt, "activities.endedAt") : null;
+    if (index) log.activities[index - 1].endedAt = activity.startedAt;
+    else log.shift.startedAt = activity.startedAt;
+    if (index < log.activities.length - 1) log.activities[index + 1].startedAt = activity.endedAt;
+    else log.shift.endedAt = activity.endedAt;
+  });
+}
+
+export function continueDailyLog(previous, options) {
+  if (!previous.shift.endedAt) fail("HANDOVER_UNFINISHED", "End the previous shift before continuing its work.", "shift");
+  const point = previous.points.at(-1);
+  return createDailyLog({ ...options, assignment: options.assignment ?? previous.assignmentSnapshot ?? {
+    assignmentId: previous.assignmentId, job: previous.job, equipment: previous.equipment, personnel: [], points: [],
+  }, ancillary: previous.logType === "ancillary", previous,
+    startingPoint: options.startingPoint === undefined ? (point ? { jobNumber: point.jobNumber, pointId: point.pointId } : null) : options.startingPoint,
+    startDepthM: options.startDepthM === undefined ? point?.endDepthM ?? null : options.startDepthM,
+    setup: { ...previous.setup, ...options.setup, previousPointStatus: point?.endStatus ?? null } });
+}

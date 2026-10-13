@@ -9,17 +9,18 @@ export default function FoundationGate({ children }) {
 
   const establishSession = useCallback(async () => {
     setState({ status: "loading" });
-    if (import.meta.env.VITE_BYPASS_AUTH === "true") {
-      setState({ status: "ready", mode: "prototype", user: { displayName: "Sean Templeton" }, assignments: [] });
-      return;
-    }
-
     try {
       const session = await getSession();
       const bootstrap = await getBootstrap();
+      const cached = await getCachedFoundation();
+      if (cached?.session?.user?.userId === session.user.userId) {
+        for (const assignment of bootstrap.assignments) {
+          if (assignment.pointFeedAvailable === false) assignment.points = cached.bootstrap.assignments.find(a => a.assignmentId === assignment.assignmentId)?.points || [];
+        }
+      }
       await cacheFoundation({ session, bootstrap, cachedAt: new Date().toISOString() });
       try { await sendSyncProbe({ deviceId: getDeviceIdentity(), probeId: getDailyProbeIdentity() }); } catch { /* bootstrap remains usable if probe fails */ }
-      setState({ status: "ready", mode: "live", user: session.user, assignments: bootstrap.assignments, bootstrap });
+      setState({ status: "ready", mode: "live", user: session.user, expiresAt: session.expiresAt, assignments: bootstrap.assignments, bootstrap });
     } catch (error) {
       if (error.status === 401) {
         setState({ status: "login" });
@@ -28,7 +29,7 @@ export default function FoundationGate({ children }) {
       try {
         const cached = await getCachedFoundation();
         if (cached?.session && new Date(cached.session.expiresAt).getTime() > Date.now()) {
-          setState({ status: "ready", mode: "offline", user: cached.session.user, assignments: cached.bootstrap.assignments, bootstrap: cached.bootstrap, cachedAt: cached.cachedAt });
+          setState({ status: "ready", mode: "offline", user: cached.session.user, expiresAt: cached.session.expiresAt, assignments: cached.bootstrap.assignments, bootstrap: cached.bootstrap, cachedAt: cached.cachedAt });
           return;
         }
       } catch { /* fall through to unavailable */ }
@@ -58,7 +59,7 @@ export default function FoundationGate({ children }) {
   if (state.status === "login") return <LoginScreen submit={submitLogin} error={state.error} />;
   if (state.status === "unavailable") return <UnavailableScreen retry={establishSession} message={state.message} />;
 
-  return children({ ...state, logout: endSession });
+  return children({ ...state, logout: endSession, reauthenticate: () => setState({ status: "login" }) });
 }
 
 function Brand() {

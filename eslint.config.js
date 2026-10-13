@@ -21,6 +21,10 @@ export default [
     }
   },
   {
+    files: ["test/e2e/**/*.js"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } }
+  },
+  {
     files: ["server/**/*.mjs", "scripts/**/*.mjs", "test/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",

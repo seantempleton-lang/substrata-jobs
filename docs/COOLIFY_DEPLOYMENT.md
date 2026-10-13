@@ -103,6 +103,16 @@ Do not expose PostgreSQL publicly solely for this application.
 
 ## First-deployment verification
 
+Step 4 requires migration `003_field_workflow.sql`, which adds the aggregate snapshot, Custom shift label and single-use Field handoff storage. Deploy the companion Field changes (`jobs-integration.js`, server routing, Dockerfile and context-aware UI) as well.
+
+Configure Jobs with `FIELD_API_URL` (private Field service address), `FIELD_BASE_URL` (public Field URL), and `FIELD_JOBS_KEY`. Configure Field with `JOBS_API_URL` (private Jobs address) and the identical `FIELD_JOBS_KEY`. Keep the key server-side. Jobs authenticates point reads through Field's `/api/jobs/points`; Field continues to choose CORE-GS or its own configured backing store. Jobs does not write Field's points or connect directly to CORE-GS.
+
+Handoffs require the employee code in Field's authenticated account to match the Ops account. Field's separate identity store still authorizes its own operations; the opaque token supplies context only. Empty point context is allowed for the project/point-creation workflow. Jobs constructs the return URL from `APP_BASE_URL`, ignoring client-supplied authority.
+
+When migrations run as a different owner, ensure the runtime role has `select, insert, update` on `jobs_app.field_handoffs` (or suitable owner default privileges for new tables). Apply grants and migrations through the existing controlled deployment process.
+
+After deployment, complete the Geotech multi-point/crew-change and group ancillary scenarios offline on staging, close/reopen the PWA, reconnect and confirm the structured records in the supervisor office view. Verify a Field launch and return, including creating a missing point in Field. Local tests do not establish connectivity or identity compatibility in staging.
+
 After deployment:
 
 1. Open `/health`; it should return `ok`.

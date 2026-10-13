@@ -1,4 +1,5 @@
 import { query } from "./db.mjs";
+import { getFieldPoints } from "./field.mjs";
 
 function isoDate(value) {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
@@ -106,6 +107,16 @@ export async function getBootstrap({ user, from, to, myAssignmentsOnly }) {
       updatedAt: isoInstant(row.updated_at),
     };
   }).filter((assignment) => !myAssignmentsOnly || assignment.isMine);
+  const jobNumbers = [...new Set(assignments.filter(a => a.job).map(a => a.job.jobNumber))];
+  const pointResults = await Promise.allSettled(jobNumbers.map(number => getFieldPoints(number)));
+  for (const assignment of assignments) {
+    const index = jobNumbers.indexOf(assignment.job?.jobNumber);
+    if (index >= 0) {
+      const result = pointResults[index];
+      assignment.points = result.status === "fulfilled" ? result.value : [];
+      assignment.pointFeedAvailable = result.status === "fulfilled";
+    }
+  }
 
   const catalogueRows = cataloguesResult.rows;
   const mapCatalogue = (types) => catalogueRows.filter((row) => types.includes(row.catalogue_type)).map((row) => ({
@@ -126,6 +137,7 @@ export async function getBootstrap({ user, from, to, myAssignmentsOnly }) {
     currentUser: user,
     permissions: permissionsFor(user.appRole),
     assignments,
+    personnel: users.map(userRef),
     catalogues: {
       version: catalogueRows[0]?.version || 1,
       effectiveFrom: catalogueRows[0] ? isoInstant(catalogueRows[0].effective_from) : new Date(0).toISOString(),

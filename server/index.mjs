@@ -7,7 +7,8 @@ import express from "express";
 import { clearSessionCookie, login, logout, requireAuth, setSessionCookie } from "./auth.mjs";
 import { closePool, query } from "./db.mjs";
 import { getBootstrap, recordSyncProbe } from "./repository.mjs";
-import { applySyncBatch } from "./dailyLogs.mjs";
+import { applySyncBatch, listDailyLogs, readDailyLog } from "./dailyLogs.mjs";
+import { getFieldPoints, createHandoff, consumeHandoff, serviceAuthorized } from "./field.mjs";
 
 const app = express();
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -108,6 +109,29 @@ app.post("/api/v1/sync", requireAuth, async (req, res) => {
   } catch (error) {
     apiError(res, error);
   }
+});
+
+app.get("/api/v1/points", requireAuth, async (req, res) => {
+  try {
+    if (!req.query.jobNumber) return res.status(400).json({ error: { message: "Job number is required." } });
+    res.json({ points: await getFieldPoints(req.query.jobNumber) });
+  } catch (error) { apiError(res, error); }
+});
+app.get("/api/v1/daily-logs", requireAuth, async (req, res) => {
+  try { res.json({ logs: await listDailyLogs(req.auth.user) }); } catch (error) { apiError(res, error); }
+});
+app.get("/api/v1/office/daily-logs", requireAuth, async (req, res) => {
+  try { res.json({ logs: await listDailyLogs(req.auth.user, true) }); } catch (error) { apiError(res, error); }
+});
+app.get("/api/v1/daily-logs/:id", requireAuth, async (req, res) => {
+  try { res.json({ log: await readDailyLog(req.params.id, req.auth.user) }); } catch (error) { apiError(res, error); }
+});
+app.post("/api/v1/field-handoffs", requireAuth, async (req, res) => {
+  try { res.status(201).json(await createHandoff(req.body, req.auth.user)); } catch (error) { apiError(res, error); }
+});
+app.post("/api/v1/field-handoffs/consume", async (req, res) => {
+  if (!serviceAuthorized(req.get("X-Jobs-Key"))) return res.status(403).json({ error: { message: "Field service authentication is required." } });
+  try { res.json(await consumeHandoff(req.body)); } catch (error) { apiError(res, error); }
 });
 
 if (fs.existsSync(distDir)) {

@@ -19,7 +19,7 @@
       "additionalProperties": false,
       "required": ["label", "startedAt", "endedAt", "timezone"],
       "properties": {
-        "label": { "enum": ["day", "night", "morning", "afternoon"] },
+        "label": { "enum": ["day", "night", "morning", "afternoon", "custom"] },
         "startedAt": { "$ref": "common.schema.json#/$defs/instant" },
         "endedAt": { "oneOf": [{ "$ref": "common.schema.json#/$defs/instant" }, { "type": "null" }] },
         "timezone": { "const": "Pacific/Auckland" }
@@ -29,6 +29,8 @@
     "serverRevision": { "type": "integer", "minimum": 0 },
     "currentDocumentRevision": { "type": "integer", "minimum": 0 },
     "carriedFromLogId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+    "assignmentSnapshot": { "oneOf": [{ "$ref": "bootstrap.schema.json#/properties/assignments/items" }, { "type": "null" }] },
+    "setup": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
     "crew": {
       "type": "array",
       "minItems": 1,

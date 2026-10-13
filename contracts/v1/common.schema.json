@@ -24,7 +24,8 @@
           "enum": ["FieldUser", "Maintenance", "Supervisor", "Administrator", "SuperUser"]
         },
         "division": { "enum": ["Water", "Geotech", "Operations", "Finance", "HSE", null] },
-        "region": { "enum": ["North", "South", null] }
+        "region": { "enum": ["North", "South", null] },
+        "email": { "type": ["string", "null"] }
       }
     },
     "jobRef": {

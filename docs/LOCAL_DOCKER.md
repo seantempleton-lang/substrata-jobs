@@ -28,6 +28,12 @@ Invoke-RestMethod http://localhost:18080/api/v1/health
 docker compose -f compose.local.yaml logs jobs
 ```
 
+The fixture database includes Geotech and Water assignments, a filtered crew directory, and a supervisor account (`localsupervisor`, using the same local test password). Assignment dates follow the database's current date. Existing volumes initialized from the old fixture do not automatically gain new seed data.
+
+For automated browser and real-API checks, run `npx.cmd playwright install chromium` once, then `npm.cmd run test:e2e`. Playwright starts the read-only local Field fixture on port 18081. The Jobs container reaches it through `host.docker.internal`; this service is test-only and is not included in the production image. For manual local point selection, run `node test/fixtures/field-server.mjs` in another terminal while Jobs is running.
+
+The tests cover both Step 4 scenarios offline, app closure, unfinished form recovery, Water measurements, lost-response retries against Postgres, concurrent duplicate requests, office access, and single-use handoff tokens. Field receiver tests live in the Field repository under `test/jobs-integration.test.js`.
+
 ## Stop
 
 Stop the containers while retaining the local database:

@@ -11,7 +11,7 @@
         "contractVersion": { "const": "1.0" },
         "dailyLogId": { "$ref": "common.schema.json#/$defs/uuid" },
         "jobNumber": { "type": "string", "minLength": 1 },
-        "pointId": { "type": "string", "minLength": 1 },
+        "pointId": { "type": "string", "minLength": 0 },
         "requestedModule": { "enum": ["project", "geology", "spt", "core", "installation", "backfill", "consumables", "photos"] },
         "returnUrl": { "type": "string", "format": "uri" }
       }

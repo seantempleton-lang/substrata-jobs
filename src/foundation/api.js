@@ -37,16 +37,26 @@ export function logout() {
   return api("/api/v1/session", { method: "DELETE" });
 }
 
-export function getBootstrap() {
+export function getBootstrap(myAssignmentsOnly = false) {
   const from = new Date();
   const to = new Date(from.getTime() + 13 * 86_400_000);
   const params = new URLSearchParams({
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
-    myAssignmentsOnly: "true",
+    from: nzDate(from),
+    to: nzDate(to),
+    myAssignmentsOnly: String(myAssignmentsOnly),
   });
   return api(`/api/v1/bootstrap?${params}`);
 }
+
+function nzDate(date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+export function getServerLogs() { return api("/api/v1/daily-logs"); }
+export function getServerLog(id) { return api(`/api/v1/daily-logs/${encodeURIComponent(id)}`); }
+export function getOfficeLogs() { return api("/api/v1/office/daily-logs"); }
+export function getPoints(jobNumber) { return api(`/api/v1/points?jobNumber=${encodeURIComponent(jobNumber)}`); }
+export function createFieldHandoff(body) { return api("/api/v1/field-handoffs", { method: "POST", body: JSON.stringify(body) }); }
 
 export function sendSyncProbe({ deviceId, probeId }) {
   return api("/api/v1/sync/probe", {

@@ -13,11 +13,12 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "lint": "eslint src server scripts test --max-warnings 0",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
     "contracts:validate": "node scripts/validate-contracts.mjs",
     "db:migrate": "node scripts/db-migrate.mjs up",
     "db:migrate:status": "node scripts/db-migrate.mjs status",
-    "start": "node server/index.mjs"
+    "start": "node server/index.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "express": "^5.2.1",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.64.0",
     "@vitejs/plugin-react": "^4.3.4",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
@@ -35,6 +37,7 @@
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^15.14.0",
     "vite": "^6.0.5",
     "vite-plugin-pwa": "^0.21.1"

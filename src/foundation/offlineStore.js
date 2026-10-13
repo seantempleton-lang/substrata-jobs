@@ -73,17 +73,25 @@ export async function saveDailyLog(log, baseRevision = log.serverRevision || 0) 
     operation: "upsert",
     baseRevision,
     occurredAt,
-    payload: log,
+    payload: structuredClone(log),
     queueStatus: "pending",
     attempts: 0,
   };
   await transact([DAILY_LOG_STORE, MUTATION_STORE], "readwrite", (transaction) => {
-    transaction.objectStore(DAILY_LOG_STORE).put(log);
+    const logs = transaction.objectStore(DAILY_LOG_STORE);
+    const storedRequest = logs.get(log.id);
+    storedRequest.onsuccess = () => {
+      mutation.baseRevision = storedRequest.result?.serverRevision ?? baseRevision;
+      logs.put({ ...log, serverRevision: mutation.baseRevision });
+    };
     const mutations = transaction.objectStore(MUTATION_STORE);
     const existingRequest = mutations.index("byEntity").getAll(["daily_log", log.id]);
     existingRequest.onsuccess = () => {
+      mutation.queueIndex = Math.max(0, ...existingRequest.result.map(m => m.queueIndex || 0)) + 1;
       for (const existing of existingRequest.result) {
-        if (["pending", "failed"].includes(existing.queueStatus)) mutations.delete(existing.mutationId);
+        if (existing.queueStatus === "conflict") mutation.queueStatus = "conflict";
+        if (existing.queueStatus === "rejected") mutations.delete(existing.mutationId);
+        if (!existing.sent && ["pending", "failed"].includes(existing.queueStatus)) mutations.delete(existing.mutationId);
       }
       mutations.put(mutation);
     };
@@ -97,18 +105,26 @@ export async function getDailyLog(id) {
   finally { database.close(); }
 }
 
-export async function getDailyLogs() {
+export async function getDailyLogs(userId) {
   const database = await openDatabase();
-  try { return await requestResult(database.transaction(DAILY_LOG_STORE, "readonly").objectStore(DAILY_LOG_STORE).getAll()); }
+  try {
+    const logs = await requestResult(database.transaction(DAILY_LOG_STORE, "readonly").objectStore(DAILY_LOG_STORE).getAll());
+    return logs.filter(log => !userId || log.owner.userId === userId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
   finally { database.close(); }
 }
 
-export async function getPendingMutations(limit = 100) {
+export async function getPendingMutations(userId, limit = 100) {
   const database = await openDatabase();
   try {
     const all = await requestResult(database.transaction(MUTATION_STORE, "readonly").objectStore(MUTATION_STORE).getAll());
-    return all.filter((mutation) => mutation.queueStatus === "pending" || mutation.queueStatus === "failed")
-      .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt)).slice(0, limit);
+    const blocked = new Set(all.filter(m => ["conflict", "rejected"].includes(m.queueStatus)).map(m => m.entityId));
+    const seen = new Set();
+    return all.filter(m => m.payload.owner.userId === userId && !blocked.has(m.entityId) && ["pending", "failed", "sending"].includes(m.queueStatus))
+      .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).filter(m => {
+        if (seen.has(m.entityId)) return false;
+        seen.add(m.entityId); return true;
+      }).slice(0, limit);
   } finally { database.close(); }
 }
 
@@ -133,7 +149,7 @@ export async function applySyncAcknowledgements(acknowledgements) {
             queuedRequest.onsuccess = () => {
               for (const queued of queuedRequest.result) {
                 if (queued.queueStatus === "pending" && queued.mutationId !== mutation.mutationId) {
-                  mutations.put({ ...queued, baseRevision: acknowledgement.serverRevision });
+                  if (!queued.sent) mutations.put({ ...queued, baseRevision: acknowledgement.serverRevision });
                 }
               }
             };
@@ -160,4 +176,88 @@ export async function getSyncMetadata() {
   const database = await openDatabase();
   try { return await requestResult(database.transaction(META_STORE, "readonly").objectStore(META_STORE).get("sync")); }
   finally { database.close(); }
+}
+
+export async function markMutations(mutations, status, message = null) {
+  return transact([MUTATION_STORE], "readwrite", transaction => {
+    const store = transaction.objectStore(MUTATION_STORE);
+    for (const mutation of mutations) {
+      const request = store.get(mutation.mutationId);
+      request.onsuccess = () => {
+        if (request.result) store.put({ ...request.result, sent: true, queueStatus: status, message });
+      };
+    }
+  });
+}
+
+export async function claimPendingMutations(userId, limit = 100) {
+  const claimed = [];
+  await transact([MUTATION_STORE], "readwrite", transaction => {
+    const store = transaction.objectStore(MUTATION_STORE), request = store.getAll();
+    request.onsuccess = () => {
+      const blocked = new Set(request.result.filter(m => ["conflict", "rejected"].includes(m.queueStatus)).map(m => m.entityId));
+      const seen = new Set();
+      for (const mutation of request.result.sort((a, b) => (a.queueIndex || 0) - (b.queueIndex || 0) || a.occurredAt.localeCompare(b.occurredAt))) {
+        if (claimed.length >= limit || seen.has(mutation.entityId) || blocked.has(mutation.entityId) || mutation.payload.owner.userId !== userId) continue;
+        if (!["pending", "failed", "sending"].includes(mutation.queueStatus)) continue;
+        seen.add(mutation.entityId);
+        const sending = { ...mutation, sent: true, queueStatus: "sending" };
+        store.put(sending); claimed.push(sending);
+      }
+    };
+  });
+  return claimed;
+}
+
+export async function getQueueState(userId) {
+  const database = await openDatabase();
+  try {
+    return (await requestResult(database.transaction(MUTATION_STORE, "readonly").objectStore(MUTATION_STORE).getAll()))
+      .filter(m => m.payload.owner.userId === userId);
+  } finally { database.close(); }
+}
+
+export async function mergeServerLogs(logs) {
+  return transact([DAILY_LOG_STORE, MUTATION_STORE], "readwrite", transaction => {
+    const store = transaction.objectStore(DAILY_LOG_STORE);
+    for (const log of logs) {
+      const pending = transaction.objectStore(MUTATION_STORE).index("byEntity").getAll(["daily_log", log.id]);
+      pending.onsuccess = () => { if (!pending.result.length) store.put(log); };
+    }
+  });
+}
+
+export function setActiveLog(userId, id) {
+  return transact([META_STORE], "readwrite", transaction => transaction.objectStore(META_STORE).put(id, `active:${userId}`));
+}
+
+export async function getActiveLog(userId) {
+  const database = await openDatabase();
+  try { return await requestResult(database.transaction(META_STORE, "readonly").objectStore(META_STORE).get(`active:${userId}`)); }
+  finally { database.close(); }
+}
+
+export function putEditor(key, fields) {
+  return transact([META_STORE], "readwrite", transaction => transaction.objectStore(META_STORE).put(fields, `editor:${key}`));
+}
+export async function getEditor(key) {
+  const database = await openDatabase();
+  try { return await requestResult(database.transaction(META_STORE, "readonly").objectStore(META_STORE).get(`editor:${key}`)); }
+  finally { database.close(); }
+}
+export function clearEditor(key) {
+  return transact([META_STORE], "readwrite", transaction => transaction.objectStore(META_STORE).delete(`editor:${key}`));
+}
+
+export async function resolveLocalConflict(log, serverLog, choice) {
+  const resolved = choice === "server" ? serverLog : { ...log, serverRevision: serverLog.serverRevision };
+  await transact([META_STORE, DAILY_LOG_STORE, MUTATION_STORE], "readwrite", transaction => {
+    transaction.objectStore(META_STORE).put({ local: log, server: serverLog, choice, resolvedAt: new Date().toISOString() }, `conflict:${log.id}:${crypto.randomUUID()}`);
+    transaction.objectStore(DAILY_LOG_STORE).put(resolved);
+    const store = transaction.objectStore(MUTATION_STORE);
+    const request = store.index("byEntity").getAll(["daily_log", log.id]);
+    request.onsuccess = () => { for (const mutation of request.result) store.delete(mutation.mutationId); };
+  });
+  if (choice === "local") await saveDailyLog(resolved, serverLog.serverRevision);
+  return resolved;
 }

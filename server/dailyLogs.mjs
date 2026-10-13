@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { pool } from "./db.mjs";
+import { draftErrors } from "../src/domain/dailyLog.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EDITABLE_STATUSES = new Set(["draft", "returned", "reopened"]);
@@ -35,8 +36,8 @@ function payloadHash(payload) {
 function validateAllocation(activity, log) {
   if (activity.allocation?.type === "job") {
     requireUuid(activity.allocation.jobId, "activities.allocation.jobId");
-    if (!log.job || activity.allocation.jobId !== log.job.jobId || activity.allocation.jobNumber !== log.job.jobNumber) {
-      throw problem("ACTIVITY_JOB_MISMATCH", "Job activity allocation must match the daily log job.", "activities");
+    if (log.logType === "ancillary" || !activity.allocation.jobNumber) {
+      throw problem("ACTIVITY_JOB_MISMATCH", "Job allocation requires a job number on a rig log.", "activities");
     }
   } else if (activity.allocation?.type === "ancillary") {
     if (!activity.allocation.ancillaryCode) throw problem("ANCILLARY_CODE_REQUIRED", "Ancillary allocation requires a code.", "activities");
@@ -58,7 +59,7 @@ export function validateDailyLog(log, authenticatedUserId) {
   requireInstant(log.updatedAt, "updatedAt");
   if (log.assignmentId) requireUuid(log.assignmentId, "assignmentId");
   if (log.carriedFromLogId) requireUuid(log.carriedFromLogId, "carriedFromLogId");
-  if (!["day", "night", "morning", "afternoon"].includes(log.shift?.label)) throw problem("SHIFT_LABEL_INVALID", "Unsupported shift label.", "shift.label");
+  if (!["day", "night", "morning", "afternoon", "custom"].includes(log.shift?.label)) throw problem("SHIFT_LABEL_INVALID", "Unsupported shift label.", "shift.label");
   if (log.shift?.timezone !== "Pacific/Auckland") throw problem("TIMEZONE_INVALID", "Daily logs must use Pacific/Auckland.", "shift.timezone");
   if (!Array.isArray(log.crew) || !log.crew.length) throw problem("CREW_REQUIRED", "At least one crew attendance period is required.", "crew");
   if (!Array.isArray(log.activities) || !log.activities.length) throw problem("ACTIVITY_REQUIRED", "At least one activity is required.", "activities");
@@ -103,10 +104,12 @@ export function validateDailyLog(log, authenticatedUserId) {
   for (const item of log.items) {
     requireUuid(item.id, "items.id");
     if (item.pointSegmentId && !pointIds.has(item.pointSegmentId)) throw problem("ITEM_POINT_INVALID", "Item point must belong to the daily log.", "items");
-    if (!item.itemCode || !item.itemLabelSnapshot || !item.itemType || !item.unit || Number(item.quantity) < 0) {
+    if (!item.itemCode || !item.itemLabelSnapshot || !["material", "service", "measurement", "subcontractor"].includes(item.itemType) || !item.unit || !Number.isFinite(item.quantity) || item.quantity < 0) {
       throw problem("ITEM_INVALID", "Log item code, label, type, non-negative quantity, and unit are required.", "items");
     }
   }
+  const errors = draftErrors(log);
+  if (errors.length) throw problem(errors[0].code, errors[0].message, errors[0].field);
   return log;
 }
 
@@ -186,6 +189,8 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
   const client = await pool.connect();
   try {
     await client.query("begin");
+    // Serialize concurrent retries and first creates, even when no log row exists yet.
+    await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [mutation.entityId]);
     const duplicate = await client.query("select * from jobs_app.sync_mutations where mutation_id = $1", [mutation.mutationId]);
     if (duplicate.rowCount) {
       const row = duplicate.rows[0];
@@ -194,7 +199,7 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
       return acknowledgement(row, row.result_status === "applied" ? "duplicate" : row.result_status);
     }
 
-    const existing = await client.query("select owner_user_id, status, server_revision from jobs_app.daily_logs where id = $1 for update", [mutation.entityId]);
+    const existing = await client.query("select owner_user_id, status, server_revision, aggregate from jobs_app.daily_logs where id = $1 for update", [mutation.entityId]);
     if (existing.rowCount && Number(existing.rows[0].server_revision) !== mutation.baseRevision) {
       const row = await recordResult(client, { mutation, batchId, deviceId, userId: user.userId, hash,
         status: "conflict", revision: Number(existing.rows[0].server_revision), errorCode: "REVISION_CONFLICT",
@@ -210,6 +215,10 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
     if (mutation.payload.job) {
       const job = await client.query("select job_number from public.jobs where id = $1", [mutation.payload.job.jobId]);
       if (!job.rowCount || job.rows[0].job_number !== mutation.payload.job.jobNumber) throw problem("JOB_IDENTITY_MISMATCH", "jobId does not resolve to jobNumber.", "job");
+    }
+    for (const allocation of mutation.payload.activities.map(activity => activity.allocation).filter(allocation => allocation.type === "job")) {
+      const job = await client.query("select job_number from public.jobs where id=$1", [allocation.jobId]);
+      if (!job.rowCount || job.rows[0].job_number !== allocation.jobNumber) throw problem("JOB_IDENTITY_MISMATCH", "Payroll jobId does not resolve to jobNumber.", "activities.allocation");
     }
     const revision = (existing.rowCount ? Number(existing.rows[0].server_revision) : 0) + 1;
     const log = mutation.payload;
@@ -236,11 +245,19 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
         revision, log.carriedFromLogId, JSON.stringify(log.clientAcknowledgement), log.notes, log.createdAt, log.updatedAt],
     );
     await replaceChildren(client, log);
+    await client.query("update jobs_app.daily_logs set aggregate=$2::jsonb where id=$1", [log.id, JSON.stringify({ ...log, serverRevision: revision })]);
+    const planned = log.assignmentId ? await client.query("select personnel from public.planner_assignments where id=$1", [log.assignmentId]) : { rows: [] };
+    const plannedCrew = planned.rows[0]?.personnel || [];
+    const names = plannedCrew.map(person => typeof person === "string" ? person : person.displayName || person.name);
+    const actualNames = [...new Set(log.crew.map(person => person.displayNameSnapshot))];
+    const deviations = { outsideAssignment: !!log.assignmentId && !plannedCrew.some(person => typeof person === "string" ? person === user.displayName : person.userId === user.userId || person.displayName === user.displayName),
+      added: actualNames.filter(name => !names.includes(name)), removed: names.filter(name => !actualNames.includes(name)) };
     await client.query(
       `insert into jobs_app.audit_events (daily_log_id,actor_user_id,event_type,before_revision,after_revision,metadata)
        values ($1,$2,$3,$4,$5,$6::jsonb)`,
       [log.id, user.userId, existing.rowCount ? "draft_synced" : "draft_created",
-        existing.rowCount ? mutation.baseRevision : null, revision, JSON.stringify({ mutationId: mutation.mutationId, deviceId })],
+        existing.rowCount ? mutation.baseRevision : null, revision, JSON.stringify({ mutationId: mutation.mutationId, deviceId, occurredAt: mutation.occurredAt, deviations,
+          previous: existing.rows[0]?.aggregate ?? null, current: { ...log, serverRevision: revision } })],
     );
     const row = await recordResult(client, { mutation, batchId, deviceId, userId: user.userId, hash, status: "applied", revision });
     await client.query("commit");
@@ -251,6 +268,40 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
   } finally {
     client.release();
   }
+}
+
+export async function readDailyLog(id, user) {
+  requireUuid(id, "id");
+  const result = await pool.query("select * from jobs_app.daily_logs where id=$1", [id]);
+  if (!result.rowCount) throw Object.assign(problem("LOG_NOT_FOUND", "Daily log was not found."), { statusCode: 404 });
+  const row = result.rows[0];
+  if (row.owner_user_id !== user.userId && !["Supervisor", "Administrator", "SuperUser"].includes(user.appRole))
+    throw Object.assign(problem("LOG_OWNER_FORBIDDEN", "This daily log belongs to another user."), { statusCode: 403 });
+  if (row.aggregate) return { ...row.aggregate, serverRevision: Number(row.server_revision), status: row.status };
+  const [points, crew, activities, items] = await Promise.all([
+    pool.query("select * from jobs_app.log_points where daily_log_id=$1 order by sequence", [id]),
+    pool.query("select * from jobs_app.crew_attendance where daily_log_id=$1 order by attended_from", [id]),
+    pool.query("select * from jobs_app.activities where daily_log_id=$1 order by sequence", [id]),
+    pool.query("select * from jobs_app.log_items where daily_log_id=$1", [id]),
+  ]);
+  const iso = value => value ? new Date(value).toISOString() : null;
+  return { contractVersion: "1.0", id, logType: row.log_type, division: row.division, job: row.job_snapshot, equipment: row.equipment_snapshot,
+    owner: row.owner_snapshot, assignmentId: row.assignment_id, carriedFromLogId: row.carried_from_log_id, status: row.status,
+    serverRevision: Number(row.server_revision), currentDocumentRevision: row.current_document_revision, notes: row.notes,
+    clientAcknowledgement: row.client_acknowledgement, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
+    shift: { label: row.shift_label, startedAt: iso(row.shift_started_at), endedAt: iso(row.shift_ended_at), timezone: row.timezone },
+    points: points.rows.map(p => ({ id: p.id, sequence: p.sequence, jobNumber: p.job_number, pointId: p.point_id, startedAt: iso(p.started_at), endedAt: iso(p.ended_at), startDepthM: p.start_depth_m == null ? null : Number(p.start_depth_m), endDepthM: p.end_depth_m == null ? null : Number(p.end_depth_m), endStatus: p.end_status })),
+    crew: crew.rows.map(p => ({ id: p.id, userId: p.user_id, employeeCodeSnapshot: p.employee_code_snapshot, displayNameSnapshot: p.display_name_snapshot, roleSnapshot: p.role_snapshot, attendedFrom: iso(p.attended_from), attendedTo: iso(p.attended_to) })),
+    activities: activities.rows.map(a => ({ id: a.id, sequence: a.sequence, pointSegmentId: a.point_segment_id, activityCode: a.activity_code, activityLabelSnapshot: a.activity_label_snapshot, startedAt: iso(a.started_at), endedAt: iso(a.ended_at), allocation: a.allocation_type === "job" ? { type: "job", jobId: a.allocation_job_id, jobNumber: a.allocation_job_number_snapshot } : { type: "ancillary", ancillaryCode: a.ancillary_code }, notes: a.notes })),
+    items: items.rows.map(i => ({ id: i.id, pointSegmentId: i.point_segment_id, itemType: i.item_type, itemCode: i.item_code, itemLabelSnapshot: i.item_label_snapshot, quantity: Number(i.quantity), unit: i.unit, notes: i.notes })),
+  };
+}
+
+export async function listDailyLogs(user, office = false) {
+  if (office && !["Supervisor", "Administrator", "SuperUser"].includes(user.appRole)) throw Object.assign(problem("OFFICE_FORBIDDEN", "Supervisor access is required."), { statusCode: 403 });
+  const result = await pool.query(`select id from jobs_app.daily_logs where ($1::boolean or owner_user_id=$2)
+    and (shift_started_at>=now()-interval '14 days' or status in ('draft','returned','reopened')) order by shift_started_at desc`, [office, user.userId]);
+  return Promise.all(result.rows.map(row => readDailyLog(row.id, user)));
 }
 
 export async function applySyncBatch({ body, user }) {

@@ -332,3 +332,29 @@ textarea { min-height: 70px; resize: vertical; line-height: 1.4; }
   .screen { overflow: visible; }
   .success-hero { background: white; }
 }
+/* Persisted field workflow controls */
+.form-fields { display: grid; gap: 14px; }
+.form-fields label { display: grid; gap: 5px; }
+.form-fields input, .form-fields select, .form-fields textarea, .notes-field textarea { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); padding: 10px; font-size: 13px; }
+.form-fields .time-control input { border: 0; padding: 10px 6px; font-size: 12px; }
+.form-fields .check-label { display: flex; align-items: center; gap: 8px; }
+.form-fields .check-label input { width: auto; }
+.form-fields .secondary-button { margin: 0; }
+.user-picker { margin-top: 12px; }
+.user-picker .option-row small { display: block; color: var(--muted); font-weight: 400; margin-top: 4px; }
+.workspace-error { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px; background: #fae8e5; color: #8f443c; font-size: 12px; }
+.workspace-error span { flex: 1; }
+.workspace-error button { background: transparent; border: 0; cursor: pointer; }
+.record-list { padding-bottom: 24px; }
+.record-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.record-json { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; text-align: left; }
+.timeline-button { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer; grid-template-columns: 85px 12px 1fr 18px; }
+.notes-field { display: grid; gap: 6px; margin-top: 18px; }
+.form-card { border: 1px solid var(--line); border-radius: 12px; padding: 13px; margin-top: 14px; background: white; font-size: 12px; }
+button.attendance-card { width: 100%; text-align: left; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+.bottom-nav button { border: 0; color: #b6c9cd; background: transparent; display: grid; place-content: center; gap: 3px; font-size: 10px; cursor: pointer; }
+.bottom-nav button.active { color: var(--gold); }
+.bottom-nav button svg { margin: auto; }
+.validation-list { color: #8f443c; font-size: 12px; padding-left: 20px; }
+.bottom-sheet > .form-fields { padding-bottom: 8px; }

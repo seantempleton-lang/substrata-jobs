@@ -1,8 +1,9 @@
 # Substrata Jobs MVP Product Specification
 
-Status: Draft baseline  
-Last updated: 20 July 2026  
+Status: Draft baseline - implementation in progress  
+Last updated: 14 October 2026  
 Product scope: Water and Geotech
+Current delivery stage: Step 4 - Core daily-log vertical slice
 
 ## 1. Purpose
 
@@ -52,7 +53,7 @@ The mobile application must never connect directly to Postgres or CORE-GS.
 ## 3. Shared identifiers
 
 - The Ops Manager job number is identical to the CORE-GS `PROJ_ID` and is carried across all systems.
-- All Jobs records use server-generated UUIDs as their permanent identifiers.
+- Jobs records receive permanent UUIDs on the device before first synchronization, as defined by the implemented v1 offline contract.
 - Existing sequential paper log numbers do not need to be preserved.
 - The UI may display a friendly reference such as `N107 - 20 Jul - Day - 01`, but it is not a business key.
 
@@ -531,7 +532,10 @@ Establish the production PWA shell, device database, sync queue, authentication 
 
 Implement rig and ancillary record creation, shift controls, activity continuity, crew attendance, multi-point work, handover, catalogued site data, and autosave using the production contracts.
 
-**Exit criterion:** both primary prototype scenarios can be completed offline and are visible as structured records in the office system.
+**Delivery checkpoints:**
+
+1. **Field workflow complete:** both primary prototype scenarios can be completed offline, survive app closure or refresh, and resume without data loss.
+2. **Integration complete:** the resulting daily logs synchronize idempotently and are visible as structured records in the office system.
 
 ### Step 5 - Submission and client output
 
@@ -561,13 +565,13 @@ Coolify is the intended hosting platform. The target topology is:
 - environment-specific secrets and service URLs managed in Coolify
 - health checks, persistent storage only where required, and migration commands controlled during deployment
 
-The Step 1 prototype uses mocked data and device-local state. Database provisioning begins after the shared contracts in Step 2, avoiding premature schema commitments while the field workflow is still being validated.
+The field screens now use authenticated Ops assignments and persisted daily-log aggregates. Mocked walkthroughs have been removed. Environment-specific database migrations remain controlled deployment actions.
 
 ## 24. Implementation progress
 
 ### Step 1 - Complete for review
 
-The repository contains the clickable mobile-first PWA prototype and walkthrough scenarios for Geotech, Water, and ancillary-only work. It is deployed independently through Coolify and remains intentionally disconnected from production data.
+The initial clickable mobile-first prototype covered Geotech, Water, and ancillary-only work. Step 4 has replaced its mocked state with live assignments and locally persisted daily logs while retaining the screen design.
 
 ### Step 2 - Proposed contract pack complete
 
@@ -586,7 +590,7 @@ The contract pack contains:
 - a proposed PostgreSQL `jobs_app` schema alongside Ops-owned master data
 - validated representative payloads for all three prototype scenarios
 
-No production migration has been created or applied. The database model remains a design reference until the shared-database and authentication assumptions receive implementation approval.
+The contract pack became the implementation baseline. Database migrations were subsequently added during Steps 3 and 4; applying them remains an environment-controlled deployment action.
 
 ### Step 3 - Foundation deployed and verified
 
@@ -602,4 +606,39 @@ The shared-cluster and shared-identity assumptions were approved on 20 July 2026
 - health endpoints separating container health from database/integration health
 - restricted PostgreSQL role and Coolify environment guidance
 
-The foundation was deployed and its shared Ops login and current prototype behaviour were verified on 3 September 2026. Daily-log persistence begins in Step 4 rather than the foundation migration.
+The foundation was deployed and its shared Ops login and prototype behaviour were verified on 3 September 2026.
+
+### Step 4 - Implemented and locally verified; staging acceptance pending
+
+The repository now includes the production-shaped domain, local persistence, synchronization, and server persistence needed for an editable daily-log aggregate:
+
+- client-side creation of rig-shift and ancillary logs with stable UUIDs and assignment snapshots
+- continuous activity transitions that close and start at the same instant
+- multi-point transitions with finishing depth and status validation
+- shift completion and submission-readiness validation
+- IndexedDB stores for daily logs, pending mutations, and synchronization metadata
+- local autosave primitives that atomically store a log and queue its latest mutation
+- authenticated, idempotent `POST /api/v1/sync` handling with revision-conflict detection
+- PostgreSQL persistence for daily logs, points, crew attendance, activities, items, sync mutations, and audit events
+- server-side ownership, contract, point/job, allocation, and editability validation
+- automated coverage for the core client domain and server sync validation
+
+The Step 4 UI and integrations now include:
+
+- live assignment selection, with My assignments only enabled by default and all assignments cached for offline plan changes
+- starting-point selection and planned-crew replacement; the active Ops personnel picker defaults to matching division and region with Show all users
+- activity descriptions, allocation and time corrections; crew attendance periods including leave/rejoin; point changes, depths and statuses
+- division-specific catalogue items and Other descriptions/units for materials, services, measurements and subcontractors; bore setup and daily notes
+- atomic local autosave, active-log recovery, unfinished editor-field recovery and synchronization on reconnection
+- real Local, Pending, Synced, Failed and Conflict indicators, retry controls and deliberate conflict reconciliation preserving both versions
+- immutable in-flight mutation payloads, safe retry after a lost acknowledgement, and serialized concurrent server creates/retries
+- continuation into a new log carrying point/setup context without copying earlier work entries
+- authenticated Field point reads and five-minute single-use context handoffs, with companion receiver/context changes in the Field repository
+- structured log reads and a supervisor-only office view; sync audit snapshots include device/time and assignment/crew deviations
+- browser and real-Postgres coverage for the Geotech multi-point, group ancillary and Water workflows
+
+Step 4 is complete when both delivery checkpoints in section 23 pass in staging. Step 5 submission, immutable document revisions, server-rendered PDFs, and client email delivery have not started.
+
+### Verification baseline - 14 October 2026
+
+The local verification suite passes lint, 17 domain/server/IndexedDB tests, contract validation, the production PWA/container build, seven browser/real-Postgres tests and two Field receiver tests. Coverage includes full browser-process restart offline, unfinished editor recovery, lost-response/concurrent duplicate retries, office access and handoff consumption. Field's context-aware UI also passes a browser smoke check with mocked authenticated context. Live staging connectivity, shared employee-code compatibility, and field-device acceptance remain environment checks; local fixtures do not establish those results.
