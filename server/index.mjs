@@ -9,6 +9,9 @@ import { closePool, query } from "./db.mjs";
 import { getBootstrap, recordSyncProbe } from "./repository.mjs";
 import { applySyncBatch, listDailyLogs, readDailyLog } from "./dailyLogs.mjs";
 import { getFieldPoints, createHandoff, consumeHandoff, serviceAuthorized } from "./field.mjs";
+import { submitLog, uploadSignature, readSignature, readOutput, generateDocument, downloadDocument, signatureKey } from "./submissions.mjs";
+import { emailCapability, sendClientEmail } from "./email.mjs";
+import { getClientContacts } from "./repository.mjs";
 
 const app = express();
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,7 +28,9 @@ function apiError(res, error) {
   res.status(status).json({
     error: {
       code: error.code || (status >= 500 ? "INTERNAL_ERROR" : "REQUEST_ERROR"),
-      message: status >= 500 ? "The server could not complete the request." : error.message,
+      message: status >= 500 && !error.statusCode ? "The server could not complete the request." : error.message,
+      field: error.field || null,
+      validationErrors: error.validationErrors || [],
       retryable: status >= 500,
       correlationId,
     },
@@ -40,12 +45,14 @@ app.get("/api/v1/health", async (_req, res) => {
   try {
     const result = await query(`select
       to_regclass('public.app_users') is not null as ops_identity,
-      to_regclass('jobs_app.catalogue_items') is not null as jobs_schema`);
+      to_regclass('jobs_app.catalogue_items') is not null and to_regclass('jobs_app.document_artifacts') is not null as jobs_schema`);
     checks.database = "ok";
     checks.opsIdentity = result.rows[0].ops_identity ? "ok" : "missing";
     checks.jobsSchema = result.rows[0].jobs_schema ? "ok" : "missing";
     const ok = Object.values(checks).every((value) => value === "ok");
-    return res.status(ok ? 200 : 503).json({ ok, checks });
+    let signatures = "configured";
+    try { signatureKey(); } catch { signatures = "unconfigured"; }
+    return res.status(ok ? 200 : 503).json({ ok, checks, capabilities: { email: emailCapability(), signatures } });
   } catch (error) {
     checks.database = "error";
     return res.status(503).json({ ok: false, checks, message: error.message });
@@ -125,6 +132,36 @@ app.get("/api/v1/office/daily-logs", requireAuth, async (req, res) => {
 });
 app.get("/api/v1/daily-logs/:id", requireAuth, async (req, res) => {
   try { res.json({ log: await readDailyLog(req.params.id, req.auth.user) }); } catch (error) { apiError(res, error); }
+});
+app.post("/api/v1/daily-logs/:id/submit", requireAuth, async (req, res) => {
+  try { res.json(await submitLog(req.params.id, req.body, req.auth.user)); } catch (error) { apiError(res, error); }
+});
+app.post("/api/v1/daily-logs/:id/signatures", requireAuth, async (req, res) => {
+  try { res.json(await uploadSignature(req.params.id, req.body, req.auth.user)); } catch (error) { apiError(res, error); }
+});
+app.get("/api/v1/signatures/:id", requireAuth, async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
+  try { res.json(await readSignature(req.params.id, req.auth.user)); } catch (error) { apiError(res, error); }
+});
+app.get("/api/v1/daily-logs/:id/output", requireAuth, async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
+  try {
+    const log = await readDailyLog(req.params.id, req.auth.user);
+    res.json({ ...await readOutput(req.params.id, req.auth.user), email: emailCapability(), contacts: await getClientContacts(log.job?.jobId) });
+  } catch (error) { apiError(res, error); }
+});
+app.post("/api/v1/daily-logs/:id/revisions/:revision/pdf", requireAuth, async (req, res) => {
+  try { res.json({ document: await generateDocument(req.params.id, Number(req.params.revision), req.auth.user) }); } catch (error) { apiError(res, error); }
+});
+app.get("/api/v1/daily-logs/:id/revisions/:revision/pdf", requireAuth, async (req, res) => {
+  try {
+    const artifact = await downloadDocument(req.params.id, Number(req.params.revision), req.auth.user);
+    res.set({ "Cache-Control": "private, no-store", "Content-Disposition": `${req.query.download === "1" ? "attachment" : "inline"}; filename="daily-record-${req.params.id}-r${Number(req.params.revision)}-draft.pdf"`, "X-Content-Type-Options": "nosniff", "X-Document-SHA256": artifact.sha256 });
+    res.type("application/pdf").send(artifact.content);
+  } catch (error) { apiError(res, error); }
+});
+app.post("/api/v1/daily-logs/:id/revisions/:revision/send-client-email", requireAuth, async (req, res) => {
+  try { res.json({ delivery: await sendClientEmail(req.params.id, Number(req.params.revision), req.body, req.auth.user) }); } catch (error) { apiError(res, error); }
 });
 app.post("/api/v1/field-handoffs", requireAuth, async (req, res) => {
   try { res.status(201).json(await createHandoff(req.body, req.auth.user)); } catch (error) { apiError(res, error); }

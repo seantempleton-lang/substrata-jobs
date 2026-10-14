@@ -1,5 +1,7 @@
 const DB_NAME = "substrata-jobs";
-const DB_VERSION = 2;
+import { assertSubmittable } from "../domain/dailyLog.js";
+import { canonical, contentHash, submissionContent, retentionEligible, serverSnapshot } from "../domain/submission.js";
+const DB_VERSION = 3;
 const FOUNDATION_STORE = "foundation";
 const DAILY_LOG_STORE = "dailyLogs";
 const MUTATION_STORE = "mutations";
@@ -18,6 +20,9 @@ function openDatabase() {
         mutations.createIndex("byEntity", ["entityType", "entityId"]);
       }
       if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE);
+      for (const [name, keyPath] of [["signatures", "id"], ["submissions", "logId"], ["deliveries", "requestId"]]) {
+        if (!database.objectStoreNames.contains(name)) database.createObjectStore(name, { keyPath });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -64,7 +69,9 @@ export function clearFoundationCache() {
   return transact([FOUNDATION_STORE], "readwrite", (transaction) => transaction.objectStore(FOUNDATION_STORE).delete("latest"));
 }
 
-export async function saveDailyLog(log, baseRevision = log.serverRevision || 0) {
+export async function saveDailyLog(log, baseRevision = log.serverRevision || 0, signature = null) {
+  if (!["draft", "returned", "reopened"].includes(log.status)) throw new Error("Submitted records cannot be edited.");
+  if ((await getWorkflowRecords("submissions")).some(i => i.logId === log.id && i.state !== "completed")) throw new Error("Submission is pending. Resolve it before editing this record.");
   const occurredAt = new Date().toISOString();
   const mutation = {
     mutationId: crypto.randomUUID(),
@@ -73,14 +80,18 @@ export async function saveDailyLog(log, baseRevision = log.serverRevision || 0) 
     operation: "upsert",
     baseRevision,
     occurredAt,
-    payload: structuredClone(log),
+    payload: serverSnapshot(log),
     queueStatus: "pending",
     attempts: 0,
   };
-  await transact([DAILY_LOG_STORE, MUTATION_STORE], "readwrite", (transaction) => {
+  await transact([DAILY_LOG_STORE, MUTATION_STORE, "signatures", "submissions"], "readwrite", (transaction) => {
+    const intent = transaction.objectStore("submissions").get(log.id);
+    intent.onsuccess = () => { if (intent.result && intent.result.state !== "completed") transaction.abort(); };
+    if (signature) transaction.objectStore("signatures").put(signature);
     const logs = transaction.objectStore(DAILY_LOG_STORE);
     const storedRequest = logs.get(log.id);
     storedRequest.onsuccess = () => {
+      if (storedRequest.result && !["draft", "returned", "reopened"].includes(storedRequest.result.status)) { transaction.abort(); return; }
       mutation.baseRevision = storedRequest.result?.serverRevision ?? baseRevision;
       logs.put({ ...log, serverRevision: mutation.baseRevision });
     };
@@ -143,7 +154,7 @@ export async function applySyncAcknowledgements(acknowledgements) {
             const logRequest = logs.get(mutation.entityId);
             logRequest.onsuccess = () => {
               if (!logRequest.result) return;
-              logs.put({ ...logRequest.result, serverRevision: acknowledgement.serverRevision });
+              logs.put({ ...logRequest.result, serverRevision: acknowledgement.serverRevision, locallySynchronizedAt: new Date().toISOString() });
             };
             const queuedRequest = mutations.index("byEntity").getAll([mutation.entityType, mutation.entityId]);
             queuedRequest.onsuccess = () => {
@@ -218,11 +229,23 @@ export async function getQueueState(userId) {
 }
 
 export async function mergeServerLogs(logs) {
-  return transact([DAILY_LOG_STORE, MUTATION_STORE], "readwrite", transaction => {
+  return transact([DAILY_LOG_STORE, MUTATION_STORE, "submissions", META_STORE], "readwrite", transaction => {
     const store = transaction.objectStore(DAILY_LOG_STORE);
     for (const log of logs) {
       const pending = transaction.objectStore(MUTATION_STORE).index("byEntity").getAll(["daily_log", log.id]);
-      pending.onsuccess = () => { if (!pending.result.length) store.put(log); };
+      pending.onsuccess = () => {
+        const intent = transaction.objectStore("submissions").get(log.id);
+        intent.onsuccess = () => {
+          if (!pending.result.length && (!intent.result || intent.result.state === "completed")) {
+            const tombstone = transaction.objectStore(META_STORE).get(`purged:${log.id}`);
+            tombstone.onsuccess = () => {
+              if (log.status === "approved" && tombstone.result?.serverRevision === log.serverRevision) return;
+              const old = store.get(log.id);
+              old.onsuccess = () => store.put({ ...log, locallySynchronizedAt: old.result?.serverRevision === log.serverRevision ? old.result.locallySynchronizedAt || new Date().toISOString() : new Date().toISOString() });
+            };
+          }
+        };
+      };
     }
   });
 }
@@ -251,7 +274,13 @@ export function clearEditor(key) {
 
 export async function resolveLocalConflict(log, serverLog, choice) {
   const resolved = choice === "server" ? serverLog : { ...log, serverRevision: serverLog.serverRevision };
-  await transact([META_STORE, DAILY_LOG_STORE, MUTATION_STORE], "readwrite", transaction => {
+  const intent = (await getWorkflowRecords("submissions")).find(i => i.logId === log.id);
+  if (intent?.sent && !intent.confirmedRejected && intent.state !== "completed") throw new Error("The submission outcome is uncertain. Reconnect and retry the existing request first.");
+  await transact([META_STORE, DAILY_LOG_STORE, MUTATION_STORE, "submissions"], "readwrite", transaction => {
+    if (intent) {
+      transaction.objectStore(META_STORE).put(intent, `submission-history:${intent.requestId}`);
+      transaction.objectStore("submissions").delete(log.id);
+    }
     transaction.objectStore(META_STORE).put({ local: log, server: serverLog, choice, resolvedAt: new Date().toISOString() }, `conflict:${log.id}:${crypto.randomUUID()}`);
     transaction.objectStore(DAILY_LOG_STORE).put(resolved);
     const store = transaction.objectStore(MUTATION_STORE);
@@ -260,4 +289,104 @@ export async function resolveLocalConflict(log, serverLog, choice) {
   });
   if (choice === "local") await saveDailyLog(resolved, serverLog.serverRevision);
   return resolved;
+}
+
+export async function getWorkflowRecords(storeName, userId) {
+  const database = await openDatabase();
+  try {
+    const records = await requestResult(database.transaction(storeName).objectStore(storeName).getAll());
+    return userId ? records.filter(row => row.userId === userId) : records;
+  } finally { database.close(); }
+}
+
+export function putWorkflowRecord(storeName, record) {
+  if (storeName === "submissions") return transact([storeName], "readwrite", tx => {
+    const store = tx.objectStore(storeName), request = store.get(record.logId);
+    request.onsuccess = () => { if (request.result?.requestId === record.requestId && request.result.state !== "completed") store.put(record); };
+  });
+  return transact([storeName], "readwrite", tx => tx.objectStore(storeName).put(record));
+}
+export function deleteWorkflowRecord(storeName, key) {
+  return transact([storeName], "readwrite", tx => tx.objectStore(storeName).delete(key));
+}
+
+export async function queueSubmission(logId, userId) {
+  const log = await getDailyLog(logId);
+  if (!log || log.owner.userId !== userId || !["draft", "returned", "reopened"].includes(log.status)) throw new Error("Only your editable record can be submitted.");
+  assertSubmittable(log);
+  const intent = { logId, userId, requestId: crypto.randomUUID(), snapshot: log, contentHash: await contentHash(submissionContent(log)), state: "pending", createdAt: new Date().toISOString() };
+  await transact([DAILY_LOG_STORE, "submissions"], "readwrite", tx => {
+    const saved = tx.objectStore(DAILY_LOG_STORE).get(logId);
+    saved.onsuccess = () => {
+      if (canonical(submissionContent(saved.result)) !== canonical(submissionContent(log))) { tx.abort(); return; }
+      const previous = tx.objectStore("submissions").get(logId);
+      previous.onsuccess = () => { if (!previous.result || previous.result.state === "completed") tx.objectStore("submissions").put(intent); };
+    };
+  });
+  return intent;
+}
+
+export function completeSubmission(intent, response) {
+  return transact([DAILY_LOG_STORE, "submissions"], "readwrite", tx => {
+    tx.objectStore(DAILY_LOG_STORE).put({ ...response.log, locallySynchronizedAt: new Date().toISOString() });
+    tx.objectStore("submissions").put({ ...intent, state: "completed", completedAt: new Date().toISOString(), document: response.document });
+  });
+}
+
+export async function claimSubmission(intent, baseRevision) {
+  let claimed = null;
+  await transact(["submissions"], "readwrite", tx => {
+    const store = tx.objectStore("submissions"), request = store.get(intent.logId);
+    request.onsuccess = () => {
+      const current = request.result;
+      if (!current || current.requestId !== intent.requestId || current.state === "completed" || current.confirmedRejected) return;
+      claimed = current.sent ? current : { ...current, sent: true, baseRevision, state: "sending" };
+      store.put(claimed);
+    };
+  });
+  return claimed;
+}
+
+export async function cancelUnsentSubmission(logId) {
+  return transact(["submissions", META_STORE], "readwrite", tx => {
+    const store = tx.objectStore("submissions"), request = store.get(logId);
+    request.onsuccess = () => {
+      if (request.result?.sent && !request.result.confirmedRejected) { tx.abort(); return; }
+      if (request.result) tx.objectStore(META_STORE).put(request.result, `submission-history:${request.result.requestId}`);
+      store.delete(logId);
+    };
+  });
+}
+
+export async function purgeEligibleLogs(userId, now = Date.now()) {
+  const removed = [];
+  await transact([DAILY_LOG_STORE, MUTATION_STORE, META_STORE, "signatures", "submissions", "deliveries"], "readwrite", tx => {
+    const values = {}, names = [DAILY_LOG_STORE, MUTATION_STORE, "signatures", "submissions", "deliveries", META_STORE];
+    let remaining = names.length;
+    for (const name of names) {
+      const request = name === META_STORE ? tx.objectStore(name).openCursor() : tx.objectStore(name).getAll();
+      if (name === META_STORE) {
+        values.metadata = [];
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (cursor) { values.metadata.push([cursor.key, cursor.value]); cursor.continue(); }
+          else { remaining--; finish(); }
+        };
+      } else request.onsuccess = () => { values[name] = request.result; remaining--; finish(); };
+    }
+    function finish() {
+      if (remaining) return;
+      for (const log of values.dailyLogs) {
+        if (log.owner.userId !== userId || !retentionEligible(log, { mutations: values.mutations, signatures: values.signatures, intentions: values.submissions, deliveries: values.deliveries, now })) continue;
+        tx.objectStore(DAILY_LOG_STORE).delete(log.id); removed.push(log.id);
+        tx.objectStore(META_STORE).put({ serverRevision: log.serverRevision, purgedAt: new Date(now).toISOString() }, `purged:${log.id}`);
+        for (const asset of values.signatures.filter(s => s.logId === log.id)) tx.objectStore("signatures").delete(asset.id);
+        tx.objectStore("submissions").delete(log.id);
+        for (const [key, value] of values.metadata) {
+          if (typeof key === "string" && !key.startsWith("purged:") && (key.includes(log.id) || (key === `active:${userId}` && value === log.id) || (key === `editor:ui:${userId}` && (value.previous?.id === log.id || value.sheet?.local?.id === log.id)))) tx.objectStore(META_STORE).delete(key);
+        }
+      }
+    }
+  });
+  return removed;
 }

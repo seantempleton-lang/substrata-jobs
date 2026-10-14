@@ -3,7 +3,7 @@
 Status: Draft baseline - implementation in progress  
 Last updated: 14 October 2026  
 Product scope: Water and Geotech
-Current delivery stage: Step 4 - Core daily-log vertical slice
+Current delivery stage: Step 5 implemented locally; production configuration and staging acceptance pending
 
 ## 1. Purpose
 
@@ -608,7 +608,7 @@ The shared-cluster and shared-identity assumptions were approved on 20 July 2026
 
 The foundation was deployed and its shared Ops login and prototype behaviour were verified on 3 September 2026.
 
-### Step 4 - Implemented and locally verified; staging acceptance pending
+### Step 4 - Implemented, locally verified, and deployed; remaining acceptance checks tracked
 
 The repository now includes the production-shaped domain, local persistence, synchronization, and server persistence needed for an editable daily-log aggregate:
 
@@ -637,8 +637,20 @@ The Step 4 UI and integrations now include:
 - structured log reads and a supervisor-only office view; sync audit snapshots include device/time and assignment/crew deviations
 - browser and real-Postgres coverage for the Geotech multi-point, group ancillary and Water workflows
 
-Step 4 is complete when both delivery checkpoints in section 23 pass in staging. Step 5 submission, immutable document revisions, server-rendered PDFs, and client email delivery have not started.
+On 14 October 2026, the user reported deploying and testing Jobs and Field successfully. Jobs reports no planned assignments. Live Ops inspection showed an empty current planner, historical May-June assignments, and zero active assignments for every listed employee. Ops planner date edits are currently local UI state without assignment write APIs. Completing Ops planner persistence and crew assignment is being handled separately; it does not prevent Step 5 development using the local fixtures.
+
+The deployment report does not independently establish every Step 4 acceptance check. Planned-assignment acceptance awaits current saved Ops assignments; personal-device offline/restart acceptance and the full structured-office-record checkpoint should remain explicit checks if not already exercised by the user. Preserve the existing offline and synchronization baseline while implementing Step 5.
+
+### Step 5 - Implemented locally: configuration and staging acceptance pending
+
+Implement the scope in section 23 and the concrete handoff in `../PROJECT_DEVELOPMENT.md`: submission validation, optional on-device acknowledgement, durable signature upload, immutable submitted revisions, server-rendered draft PDFs, deliberate email delivery, delivery history, and safe local-retention rules.
+
+Development is independent of the separate Ops planner work. Step 5 now implements server-authoritative submission, immutable snapshots, durable encrypted signatures, draft PDFs, explicit client delivery/history and protected local retention. Supervisor approval/corrections, reopen controls, final PDFs and the Ops review inbox remain Step 6.
+
+Email provider/mailbox, client-facing branding/wording and missing Ops contact access need operational decisions during Step 5. These should not block implementation of submission/revision/PDF foundations. Document unconfigured delivery honestly and never simulate successful production email.
+
+The user selected the proposed Microsoft 365 mailbox `substrata-jobs@drilling.co.nz` and authorised a reviewable branding/wording draft. Mailbox/Entra access, signature key/backup and Ops contact grants/selection remain production configuration gaps. Jobs offers the client's contact dropdown and editable recipient, but the current Ops jobs schema lacks its supervisor-selected contact field. Local Mailpit tests establish capture and the correct PDF attachment, not Microsoft 365 authorisation or real recipient receipt. See `docs/COOLIFY_DEPLOYMENT.md` and the Step 5 update in `PROJECT_DEVELOPMENT.md`.
 
 ### Verification baseline - 14 October 2026
 
-The local verification suite passes lint, 17 domain/server/IndexedDB tests, contract validation, the production PWA/container build, seven browser/real-Postgres tests and two Field receiver tests. Coverage includes full browser-process restart offline, unfinished editor recovery, lost-response/concurrent duplicate retries, office access and handoff consumption. Field's context-aware UI also passes a browser smoke check with mocked authenticated context. Live staging connectivity, shared employee-code compatibility, and field-device acceptance remain environment checks; local fixtures do not establish those results.
+The previously recorded local verification suite passed lint, 17 domain/server/IndexedDB tests, contract validation, the production PWA/container build, seven browser/real-Postgres tests and two Field receiver tests. Coverage includes full browser-process restart offline, unfinished editor recovery, lost-response/concurrent duplicate retries, office access and handoff consumption. Field's context-aware UI also passed a browser smoke check with mocked authenticated context. The user subsequently reported successful Jobs/Field deployment and testing. The precise field-device and assignment/office acceptance checks remain as described above; local fixtures do not establish those results. This documentation update did not rerun the application test suite.

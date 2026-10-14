@@ -1,0 +1,6 @@
+{
+  "requestId": "a89fd63e-4979-4d69-a3c0-87428580bfef",
+  "recipient": "client@example.test",
+  "resendOf": null,
+  "confirmPossibleDuplicate": false
+}

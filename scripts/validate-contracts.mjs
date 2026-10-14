@@ -57,6 +57,7 @@ const schemaFiles = [
   "daily-log.schema.json",
   "sync.schema.json",
   "field-handoff.schema.json",
+  "submission.schema.json",
 ];
 
 const schemas = [];
@@ -84,11 +85,13 @@ assert.equal(bootstrap.retentionDays, 14);
 assert.ok(bootstrap.assignments.every((assignment) => assignment.personnel.every((person) => person.userId)), "planned personnel need stable user IDs");
 assert.ok(bootstrap.assignments.every((assignment) => !assignment.job || assignment.points.every((point) => point.jobNumber === assignment.job.jobNumber)), "assignment point job numbers must match");
 
-for (const file of ["daily-log-geotech.json", "daily-log-water.json", "daily-log-ancillary.json"]) {
+for (const file of ["daily-log-geotech.json", "daily-log-water.json", "daily-log-ancillary.json", "daily-log-will-sign-later.json"]) {
   const log = await readJson(`examples/${file}`);
   validateSchema("daily-log.schema.json", log, file);
   validateTimeline(log);
 }
+
+for (const file of ["submission-request.json", "send-client-email-request.json", "signature-upload-request.json"]) validateSchema("submission.schema.json", await readJson(`examples/${file}`), file);
 
 const sync = await readJson("examples/sync-request.json");
 validateSchema("sync.schema.json", sync, "sync request");

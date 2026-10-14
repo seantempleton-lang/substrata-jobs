@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://substrata-jobs.drilling.co.nz/contracts/v1/submission.schema.json",
+  "title": "Substrata Jobs explicit submission, signature and send requests",
+  "$defs": {
+    "submit": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requestId", "baseRevision", "contentHash"],
+      "properties": {
+        "requestId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "baseRevision": { "type": "integer", "minimum": 1 },
+        "contentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "drawing": {
+      "type": "object", "additionalProperties": false, "required": ["strokes"],
+      "properties": {
+        "strokes": {
+          "type": "array", "minItems": 1, "maxItems": 300,
+          "items": {
+            "type": "array", "minItems": 2, "maxItems": 20000,
+            "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number", "minimum": 0, "maximum": 1 } }
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object", "additionalProperties": false, "required": ["id", "snapshot", "drawing"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "snapshot": { "$ref": "daily-log.schema.json" },
+        "drawing": { "$ref": "#/$defs/drawing" }
+      }
+    },
+    "send": {
+      "type": "object", "additionalProperties": false, "required": ["requestId", "recipient"],
+      "properties": {
+        "requestId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "recipient": { "type": "string", "format": "email", "maxLength": 254 },
+        "resendOf": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+        "confirmPossibleDuplicate": { "type": "boolean" }
+      }
+    }
+  },
+  "oneOf": [{ "$ref": "#/$defs/submit" }, { "$ref": "#/$defs/signature" }, { "$ref": "#/$defs/send" }]
+}

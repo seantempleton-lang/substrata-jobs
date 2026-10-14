@@ -32,8 +32,21 @@ services:
       FIELD_API_URL: http://host.docker.internal:18081
       FIELD_BASE_URL: http://localhost:18081
       FIELD_JOBS_KEY: local-jobs-field-key
+      SIGNATURE_ENCRYPTION_KEY: bG9jYWwtdGVzdC1zaWduYXR1cmUta2V5LTAwMDAwMDA=
+      SIGNATURE_KEY_ID: local-v1
+      EMAIL_PROVIDER: local_smtp
+      EMAIL_FROM: substrata-jobs@example.test
+      EMAIL_REPLY_TO: substrata-jobs@example.test
+      EMAIL_ALLOW_LOCAL_CAPTURE: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
     ports:
       - "127.0.0.1:18080:8080"
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:18082:8025"
 
 volumes:
   local-postgres:

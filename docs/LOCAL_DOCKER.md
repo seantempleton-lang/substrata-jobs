@@ -56,3 +56,11 @@ The `--volumes` command deletes only the Compose-managed `local-postgres` develo
 - Coolify uses the restricted Jobs database role and, when configured, a separate migration-owner connection.
 - The local database contains a deliberately small representation of the Ops schema. Staging remains the final compatibility check against the real Ops schema and permissions.
 - `COOKIE_SECURE=false` is local-only. Coolify must retain `COOKIE_SECURE=true`.
+
+## Step 5 output tests
+
+Compose also runs Mailpit at `http://localhost:18082`, with its SMTP service reachable only on the private Compose network. It captures local test emails and has no relay configured. Jobs uses `substrata-jobs@example.test`, a local-only encryption key and `EMAIL_PROVIDER=local_smtp`; do not copy these settings into Coolify. No Microsoft 365 credentials are used during tests.
+
+The Step 5 browser/API suite covers server completeness and ownership, concurrent/replayed submission and signature upload, encrypted/restricted assets, stale signature coverage, immutable database snapshots, explicit delivery with the exact PDF checksum, resend controls, genuine unconfigured/unknown provider outcomes, PDF failure/retry, ancillary submission and a complete offline browser-process restart with lost responses. Tests may add local-only crew login/contact fixtures in the Compose database. They never change Ops production data or planner assignments. Unit tests additionally cover safe retention using approved fixtures; no approval workflow is added.
+
+`npm.cmd test` creates three representative sample PDFs in `output/pdf/step5-*`. PDF visual QA uses Poppler and pypdf from the bundled workspace dependencies. The local app remains at `http://localhost:18080`. Mailpit capture confirms test transport acceptance and attachment content; it does not establish real client receipt or Microsoft 365 access.

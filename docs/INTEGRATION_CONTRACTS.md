@@ -239,6 +239,8 @@ Client acknowledgement states are:
 - `not_signed`
 - `not_required`
 
+Step 5 preserves these statuses for compatibility and adds absence codes `WILL_SIGN_LATER` and server-generated `CONTENT_CHANGED` alongside `CLIENT_UNAVAILABLE`, `CLIENT_DECLINED`, `REMOTE_UNATTENDED` and `OTHER`. Other requires a note. Signed acknowledgements add optional company/role and work-content SHA-256 identity. Ancillary records only use `not_required`.
+
 When not signed, a reason code is required. Drawn signatures are stored as encrypted object data or an encrypted binary reference, not embedded in general audit JSON. The acknowledgement records the signer name if supplied, signature timestamp, device record owner, and daily-log revision.
 
 Submission creates a draft PDF but never sends it. Email requires a separate endpoint and explicit confirmation:
@@ -247,7 +249,25 @@ Submission creates a draft PDF but never sends it. Email requires a separate end
 POST /api/v1/daily-logs/{id}/revisions/{revision}/send-client-email
 ```
 
-The API records recipient, actor, PDF revision, provider message ID, and delivery status.
+The API records recipient, actor, PDF revision, artifact/checksum, request/provider IDs when supplied, timestamps and genuine delivery state. Microsoft Graph acceptance is reported as provider acceptance with receipt unconfirmed; `sendMail` returns no message ID. Replays return history without contacting the provider. An intentional retry/resend uses a new request UUID and `resendOf`; unknown/queued prior outcomes also require `confirmPossibleDuplicate=true`.
+
+Implemented Step 5 endpoints (all authenticated):
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/v1/daily-logs/{id}/submit` | Explicit idempotent submission with request UUID, synchronized baseRevision and submission content hash |
+| `POST /api/v1/daily-logs/{id}/signatures` | Restricted idempotent upload of normalized strokes and the acknowledged snapshot |
+| `GET /api/v1/signatures/{assetId}` | Authorized, no-store signature download |
+| `GET /api/v1/daily-logs/{id}/output` | Revisions, artifact states, delivery history, email capability and available Ops contacts |
+| `POST /api/v1/daily-logs/{id}/revisions/{revision}/pdf` | Generate/retry from the immutable snapshot; ready output cannot be replaced |
+| `GET /api/v1/daily-logs/{id}/revisions/{revision}/pdf` | Authorized preview; `?download=1` requests attachment download |
+| `POST /api/v1/daily-logs/{id}/revisions/{revision}/send-client-email` | Deliberate Send; durable request history before attempting the provider |
+
+`submission.schema.json` specifies request shapes. Submission is separate from draft sync and document revision is distinct from the synchronization counter. The device freezes the exact submission intention, drains its outbox, uploads saved signatures and submits the durable request UUID using the latest synchronized base revision. On replay that base revision/hash remain unchanged. The server locks the aggregate, verifies owner/state/version/content/completeness, atomically inserts its immutable snapshot and changes workflow state. PDF generation follows the commit; failure can be retried without creating another revision.
+
+Work identity is canonical sorted-key JSON of `workContent` in `src/domain/submission.js`; submission identity also includes acknowledgement. Sync/document counters, status, assignment cache and audit timestamps are excluded. Signed details must match the uploaded immutable acknowledgement. Changed work retains the earlier encrypted asset and acknowledged snapshot; the new submitted snapshot uses `CONTENT_CHANGED` and references the earlier asset without including its drawing in the new PDF. General audit JSON contains references/metadata, never drawn strokes.
+
+The inspected Ops schema has client contacts but no job-level selected contact. Jobs reads the authoritative job/client and offers its contacts in a dropdown; it does not presume a primary contact was chosen by the supervisor. Missing source/SELECT grants are explicit states. A future verified job contact column may be configured through `OPS_JOB_CONTACT_COLUMN`; its referenced contact must belong to the job's client. Ops setup/persistence remains external to this step.
 
 ## 12. API error format
 

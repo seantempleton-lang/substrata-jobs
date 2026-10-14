@@ -1,3 +1,4 @@
+import { serverSnapshot } from "../domain/submission";
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -11,14 +12,17 @@ async function api(path, options = {}) {
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     let code = "REQUEST_FAILED";
+    let validationErrors = [];
     try {
       const payload = await response.json();
       message = payload.error?.message || payload.error || message;
       code = payload.error?.code || code;
+      validationErrors = payload.error?.validationErrors || [];
     } catch { /* response was not JSON */ }
     const error = new Error(message);
     error.status = response.status;
     error.code = code;
+    error.validationErrors = validationErrors;
     throw error;
   }
 
@@ -53,6 +57,11 @@ function nzDate(date) {
 }
 
 export function getServerLogs() { return api("/api/v1/daily-logs"); }
+export function uploadSignature(logId, body) { return api(`/api/v1/daily-logs/${logId}/signatures`, { method: "POST", body: JSON.stringify({ ...body, snapshot: serverSnapshot(body.snapshot) }) }); }
+export function submitLog(logId, body) { return api(`/api/v1/daily-logs/${logId}/submit`, { method: "POST", body: JSON.stringify(body) }); }
+export function getOutput(logId) { return api(`/api/v1/daily-logs/${logId}/output`); }
+export function retryPdf(logId, revision) { return api(`/api/v1/daily-logs/${logId}/revisions/${revision}/pdf`, { method: "POST" }); }
+export function sendClientEmail(logId, revision, body) { return api(`/api/v1/daily-logs/${logId}/revisions/${revision}/send-client-email`, { method: "POST", body: JSON.stringify(body) }); }
 export function getServerLog(id) { return api(`/api/v1/daily-logs/${encodeURIComponent(id)}`); }
 export function getOfficeLogs() { return api("/api/v1/office/daily-logs"); }
 export function getPoints(jobNumber) { return api(`/api/v1/points?jobNumber=${encodeURIComponent(jobNumber)}`); }

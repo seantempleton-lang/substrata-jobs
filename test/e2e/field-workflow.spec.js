@@ -42,10 +42,12 @@ test("Geotech multi-point log survives offline reload, crew changes, items, hand
   await page.getByLabel("Starting point").selectOption("BH5049");
   await page.getByLabel("Starting depth").fill("0");
   await page.getByLabel("Bore size").fill("150 mm");
+  const existingIds = (await deviceLogs(page)).map(log => log.id);
   await context.setOffline(true);
   await page.getByRole("button", { name: "Start daily record" }).click();
   await expect(page.getByRole("heading", { name: "Job 302670", exact: true })).toBeVisible();
-  const id = (await deviceLogs(page)).find(log => log.logType === "rig_shift" && !log.shift.endedAt && log.serverRevision === 0).id;
+  await expect.poll(async () => (await deviceLogs(page)).some(log => !existingIds.includes(log.id))).toBeTruthy();
+  const id = (await deviceLogs(page)).find(log => !existingIds.includes(log.id)).id;
   await page.getByRole("button", { name: "Start next activity now" }).click();
   await page.getByLabel("Activity category").selectOption("GT_ROTARY_SONIC");
   await page.getByLabel("Next activity starts").fill(time(7));

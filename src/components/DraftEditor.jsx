@@ -10,7 +10,7 @@ export default function DraftEditor({ id, children, reportError }) {
     getEditor(id).then(saved => { if (!cancelled) { fields.current = saved || {}; setReady(true); } }).catch(error => reportError(error.message));
     return () => { cancelled = true; };
   }, [id, reportError]);
-  const context = { fields, update(key, value) {
+  const context = { fields, flush: () => writes.current, update(key, value) {
     fields.current[key] = value;
     const snapshot = structuredClone(fields.current);
     writes.current = writes.current.then(() => putEditor(id, snapshot)).catch(error => reportError(error.message));
@@ -28,4 +28,12 @@ export function useEditorState(key, initial) {
     setValue(resolved); context?.update(key, resolved);
   };
   return [value, change];
+}
+
+// Flush before a captured acknowledgement is committed/its editor is cleared,
+// so delayed form writes cannot restore a previously used drawing afterwards.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useEditorFlush() {
+  const context = useContext(EditorContext);
+  return () => context?.flush();
 }

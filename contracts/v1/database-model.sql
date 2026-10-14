@@ -193,3 +193,7 @@ create index crew_attendance_user_idx on jobs_app.crew_attendance (user_id, atte
 create index activities_log_time_idx on jobs_app.activities (daily_log_id, started_at);
 create index audit_events_log_time_idx on jobs_app.audit_events (daily_log_id, occurred_at);
 create index field_handoffs_expiry_idx on jobs_app.field_handoffs (expires_at) where consumed_at is null;
+-- Historical design reference, not a deployable migration. Step 5 storage lives
+-- in db/004_submission_output.sql: immutable snapshots, encrypted signatures,
+-- PostgreSQL bytea document_artifacts and email_deliveries. Never replay this
+-- model on the existing Jobs/Ops database.

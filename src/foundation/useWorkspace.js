@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cacheFoundation, getCachedFoundation, getActiveLog, getDailyLogs, getDailyLog, getQueueState, saveDailyLog, setActiveLog } from "./offlineStore";
+import { cacheFoundation, getCachedFoundation, getActiveLog, getDailyLogs, getDailyLog, getQueueState, saveDailyLog, setActiveLog, getWorkflowRecords, queueSubmission } from "./offlineStore";
 import { syncPendingDailyLogs } from "./syncManager";
 import { getBootstrap } from "./api";
 
@@ -9,6 +9,7 @@ export default function useWorkspace(foundation) {
   const [logs, setLogs] = useState([]);
   const [log, setLog] = useState(null);
   const [queue, setQueue] = useState([]);
+  const [intentions, setIntentions] = useState([]), [signatures, setSignatures] = useState([]);
   const [ready, setReady] = useState(false);
   const [returnedFromField, setReturnedFromField] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,11 +26,13 @@ export default function useWorkspace(foundation) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const [records, mutations] = await Promise.all([getDailyLogs(userId), getQueueState(userId)]);
+    const [records, mutations, intents, assets] = await Promise.all([getDailyLogs(userId), getQueueState(userId), getWorkflowRecords("submissions", userId), getWorkflowRecords("signatures", userId)]);
+    setIntentions(intents); setSignatures(assets);
     setLogs(records); setQueue(mutations);
     if (current.current) {
       const latest = records.find(record => record.id === current.current.id);
       if (latest) { current.current = latest; setLog(latest); }
+      else { current.current = null; setLog(null); }
     }
   }, [userId]);
 
@@ -86,13 +89,13 @@ export default function useWorkspace(foundation) {
     return () => { clearInterval(timer); window.removeEventListener("online", connected); window.removeEventListener("offline", disconnected); };
   }, [ready, sync]);
 
-  const persist = useCallback((update) => {
+  const persist = useCallback((update, signature = null) => {
     setBusy(true);
     const action = saves.current.catch(() => {}).then(async () => {
       const commit = async () => {
         const latest = current.current ? await getDailyLog(current.current.id) : null;
-        const next = typeof update === "function" ? update(latest) : update;
-        await saveDailyLog(next);
+        const next = typeof update === "function" ? await update(latest) : update;
+        await saveDailyLog(next, next.serverRevision || 0, signature);
         await setActiveLog(userId, next.id);
         current.current = await getDailyLog(next.id); setLog(current.current);
         await refresh(); setError(""); return current.current;
@@ -103,13 +106,28 @@ export default function useWorkspace(foundation) {
     return action.catch(failure => { setError(failure.message); throw failure; }).finally(() => setBusy(false));
   }, [refresh, userId]);
 
+  const submit = useCallback(async () => {
+    setBusy(true);
+    const action = saves.current.catch(() => {}).then(async () => {
+      const commit = () => queueSubmission(current.current.id, userId);
+      await (navigator.locks ? navigator.locks.request(`substrata-jobs-edit:${current.current.id}`, commit) : commit());
+      await refresh();
+    });
+    saves.current = action;
+    try { await action; await sync(); } catch (failure) { setError(failure.message); } finally { setBusy(false); }
+  }, [refresh, sync, userId]);
+
   const open = useCallback(async record => { await saves.current; current.current = record; setLog(record); await setActiveLog(userId, record?.id ?? null); }, [userId]);
   function status(record) {
+    const intent = intentions.find(i => i.logId === record?.id && i.state !== "completed");
+    if (intent) return intent.state === "conflict" ? "Conflict" : intent.state === "failed" ? "Failed" : "Submit pending";
     const mutations = queue.filter(m => m.entityId === record?.id);
     if (mutations.some(m => m.queueStatus === "conflict")) return "Conflict";
     if (mutations.some(m => ["failed", "rejected"].includes(m.queueStatus))) return "Failed";
     if (mutations.length) return online ? "Pending" : "Local";
     return record?.serverRevision ? "Synced" : "Local";
   }
-  return { workspace, logs, log, queue, ready, returnedFromField, busy, syncing, error, setError, online, currentTime, persist, open, sync, refresh, status };
+  const intention = intentions.find(i => i.logId === log?.id && i.state !== "completed");
+  const locked = !!intention || !!log && !["draft", "returned", "reopened"].includes(log.status);
+  return { workspace, logs, log, queue, intentions, intention, signatures, locked, submit, ready, returnedFromField, busy, syncing, error, setError, online, currentTime, persist, open, sync, refresh, status };
 }

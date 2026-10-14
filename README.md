@@ -4,6 +4,8 @@ Substrata Jobs is the offline-first field operations layer between Substrata Ops
 
 The initial product and architecture plan is documented in [docs/MVP_SPEC.md](docs/MVP_SPEC.md).
 
+The current next step and new-thread handoff are in [PROJECT_DEVELOPMENT.md](PROJECT_DEVELOPMENT.md): Step 5, submission and client output. Jobs and Field have been deployed and tested by the user; the remaining Ops planner work is tracked separately.
+
 The proposed cross-system v1 contract is documented in [docs/INTEGRATION_CONTRACTS.md](docs/INTEGRATION_CONTRACTS.md), with machine-readable schemas and examples under [contracts/v1](contracts/v1).
 
 ## Core field workflow (Step 4)

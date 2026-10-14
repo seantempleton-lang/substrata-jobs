@@ -1,6 +1,32 @@
 import { query } from "./db.mjs";
 import { getFieldPoints } from "./field.mjs";
 
+// Read only the contacts for this log's Ops-owned job. Probe availability and
+// grants first: missing integration does not disable submission or PDF output.
+export async function getClientContacts(jobId) {
+  if (!jobId) return { state: "not_applicable", options: [], selectedContactId: null };
+  try {
+    const table = await query("select to_regclass('public.client_contacts') as contacts");
+    if (!table.rows[0].contacts) return { state: "source_missing", options: [], selectedContactId: null };
+    const permission = await query("select has_table_privilege(current_user,'public.client_contacts','SELECT') as allowed");
+    if (!permission.rows[0].allowed) return { state: "permission_missing", options: [], selectedContactId: null };
+    const contacts = await query(`select cc.id,cc.full_name,cc.job_title,cc.email,cc.is_primary
+      from public.client_contacts cc join public.jobs j on j.client_id=cc.client_id where j.id=$1 and cc.email is not null order by cc.is_primary desc,cc.full_name`, [jobId]);
+    // Current Ops schema has no job contact selection. Do not treat the client's
+    // primary contact as a supervisor selection. Enable only a verified column.
+    const column = process.env.OPS_JOB_CONTACT_COLUMN;
+    let selectedContactId = null;
+    if (column && /^[a-z_][a-z0-9_]*$/.test(column)) {
+      const exists = await query("select 1 from information_schema.columns where table_schema='public' and table_name='jobs' and column_name=$1", [column]);
+      if (exists.rowCount) {
+        const selected = await query(`select ${column} as contact_id from public.jobs where id=$1`, [jobId]);
+        if (contacts.rows.some(contact => contact.id === selected.rows[0]?.contact_id)) selectedContactId = selected.rows[0].contact_id;
+      }
+    }
+    return { state: selectedContactId ? "selected_in_ops" : "job_selection_unavailable", selectedContactId, options: contacts.rows };
+  } catch { return { state: "source_unavailable", options: [], selectedContactId: null }; }
+}
+
 function isoDate(value) {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
 }

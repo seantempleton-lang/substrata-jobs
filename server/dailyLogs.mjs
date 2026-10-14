@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { pool } from "./db.mjs";
 import { draftErrors } from "../src/domain/dailyLog.js";
+import { acknowledgementErrors } from "../src/domain/submission.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EDITABLE_STATUSES = new Set(["draft", "returned", "reopened"]);
@@ -48,6 +49,7 @@ function validateAllocation(activity, log) {
 
 export function validateDailyLog(log, authenticatedUserId) {
   if (!log || log.contractVersion !== "1.0") throw problem("CONTRACT_VERSION_UNSUPPORTED", "Daily log contractVersion must be 1.0.", "contractVersion");
+  log.clientAcknowledgement ??= { status: "not_required" };
   requireUuid(log.id, "id");
   requireUuid(log.owner?.userId, "owner.userId");
   if (log.owner.userId !== authenticatedUserId) throw problem("LOG_OWNER_FORBIDDEN", "A field user can only sync their own daily log.", "owner.userId");
@@ -108,7 +110,7 @@ export function validateDailyLog(log, authenticatedUserId) {
       throw problem("ITEM_INVALID", "Log item code, label, type, non-negative quantity, and unit are required.", "items");
     }
   }
-  const errors = draftErrors(log);
+  const errors = [...draftErrors(log), ...acknowledgementErrors(log)];
   if (errors.length) throw problem(errors[0].code, errors[0].message, errors[0].field);
   return log;
 }
@@ -199,7 +201,7 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
       return acknowledgement(row, row.result_status === "applied" ? "duplicate" : row.result_status);
     }
 
-    const existing = await client.query("select owner_user_id, status, server_revision, aggregate from jobs_app.daily_logs where id = $1 for update", [mutation.entityId]);
+    const existing = await client.query("select owner_user_id, status, server_revision, aggregate, current_document_revision from jobs_app.daily_logs where id = $1 for update", [mutation.entityId]);
     if (existing.rowCount && Number(existing.rows[0].server_revision) !== mutation.baseRevision) {
       const row = await recordResult(client, { mutation, batchId, deviceId, userId: user.userId, hash,
         status: "conflict", revision: Number(existing.rows[0].server_revision), errorCode: "REVISION_CONFLICT",
@@ -222,6 +224,7 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
     }
     const revision = (existing.rowCount ? Number(existing.rows[0].server_revision) : 0) + 1;
     const log = mutation.payload;
+    log.currentDocumentRevision = Number(existing.rows[0]?.current_document_revision || 0);
     await client.query(
       `insert into jobs_app.daily_logs (
         id,log_type,division,assignment_id,job_id,job_number_snapshot,job_snapshot,equipment_id,

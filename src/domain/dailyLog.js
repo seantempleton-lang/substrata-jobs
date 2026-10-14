@@ -1,3 +1,4 @@
+import { acknowledgementErrors } from "./submission.js";
 const CONTRACT_VERSION = "1.0";
 const TIMEZONE = "Pacific/Auckland";
 
@@ -231,14 +232,19 @@ export function validationErrors(log) {
     if (index > 0 && activities[index - 1].endedAt !== activity.startedAt) add("ACTIVITY_TIMELINE_GAP", "Activities must form a continuous shift timeline.", "activities");
   }
   if (activities.at(-1)?.endedAt !== log.shift.endedAt) add("ACTIVITY_TIMELINE_END", "The final activity must end with the shift.", "activities");
+  if (activities.some((activity, index) => activity.sequence !== index + 1)) add("ACTIVITY_SEQUENCE_INVALID", "Activity sequence must be continuous from the first entry.", "activities");
   if (log.crew.some((attendance) => !attendance.attendedTo)) add("ATTENDANCE_UNFINISHED", "All crew attendance periods must be finished.", "crew");
   errors.push(...draftErrors(log));
+  errors.push(...acknowledgementErrors(log));
 
   if (log.logType === "rig_shift") {
     if (!log.job || !log.equipment) add("RIG_CONTEXT_REQUIRED", "A rig shift requires a job and equipment.", "job");
     for (const point of log.points) {
       if (!point.endedAt || point.endDepthM == null || !point.endStatus) add("POINT_UNFINISHED", `${point.pointId} requires a finish depth and status.`, "points");
       if (point.jobNumber !== log.job?.jobNumber) add("POINT_JOB_MISMATCH", `${point.pointId} does not belong to the daily log job.`, "points");
+      const from = Date.parse(point.startedAt), to = Date.parse(point.endedAt);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from < Date.parse(log.shift.startedAt) || to > Date.parse(log.shift.endedAt) || to <= from) add("POINT_TIME_INVALID", `${point.pointId}: point work must have a positive duration within the shift.`, "points");
+      if (log.points.some(other => other.id !== point.id && Date.parse(other.startedAt) < to && Date.parse(other.endedAt) > from)) add("POINT_TIME_OVERLAP", `${point.pointId}: point work periods must not overlap.`, "points");
     }
   } else {
     if (log.job || log.equipment || log.points.length) add("ANCILLARY_CONTEXT_INVALID", "Ancillary logs cannot contain a job, equipment, or points.", "logType");

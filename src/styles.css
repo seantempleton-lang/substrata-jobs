@@ -358,3 +358,12 @@ button:disabled { opacity: .55; cursor: default; }
 .bottom-nav button svg { margin: auto; }
 .validation-list { color: #8f443c; font-size: 12px; padding-left: 20px; }
 .bottom-sheet > .form-fields { padding-bottom: 8px; }
+:root { --signature-ink: #182b3c; }
+.record-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.signature-pad { display: block; width: 100%; height: auto; aspect-ratio: 8 / 3; background: white; border: 1px solid #bac6d2; border-radius: 8px; touch-action: none; }
+.pdf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pdf-actions a { text-decoration: none; }
+.delivery-entry { padding: 12px 0; border-top: 1px solid #dce3e9; overflow-wrap: anywhere; }
+.delivery-entry small { display: block; }
+.duplicate-confirm { display: flex; gap: 8px; align-items: flex-start; }
+.duplicate-confirm input { width: auto; }

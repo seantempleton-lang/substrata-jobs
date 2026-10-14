@@ -137,6 +137,8 @@
           "properties": {
             "status": { "const": "signed_on_device" },
             "signerName": { "type": "string", "minLength": 1 },
+            "companyRole": { "type": ["string", "null"], "maxLength": 200 },
+            "contentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
             "clientEmail": { "type": ["string", "null"], "format": "email" },
             "signedAt": { "$ref": "common.schema.json#/$defs/instant" },
             "signatureUploadId": { "$ref": "common.schema.json#/$defs/uuid" }
@@ -148,8 +150,9 @@
           "required": ["status", "reasonCode", "reasonNotes", "clientEmail"],
           "properties": {
             "status": { "const": "not_signed" },
-            "reasonCode": { "enum": ["CLIENT_UNAVAILABLE", "CLIENT_DECLINED", "REMOTE_UNATTENDED", "OTHER"] },
+            "reasonCode": { "enum": ["CLIENT_UNAVAILABLE", "CLIENT_DECLINED", "REMOTE_UNATTENDED", "WILL_SIGN_LATER", "OTHER", "CONTENT_CHANGED"] },
             "reasonNotes": { "type": ["string", "null"] },
+            "priorSignatureUploadId": { "$ref": "common.schema.json#/$defs/uuid" },
             "clientEmail": { "type": ["string", "null"], "format": "email" }
           }
         },
@@ -162,6 +165,9 @@
       ]
     },
     "notes": { "type": ["string", "null"] },
+    "submittedAt": { "$ref": "common.schema.json#/$defs/instant" },
+    "approvedAt": { "$ref": "common.schema.json#/$defs/instant" },
+    "requiresDrillerAction": { "type": "boolean" },
     "createdAt": { "$ref": "common.schema.json#/$defs/instant" },
     "updatedAt": { "$ref": "common.schema.json#/$defs/instant" }
   },
