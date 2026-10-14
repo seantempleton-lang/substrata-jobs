@@ -1,8 +1,20 @@
 # Substrata Jobs development handoff
 
 Last updated: 14 October 2026  
-Next step: Step 5 configuration and staging acceptance; Step 6 after review  
+Next step: Daily bore input UI walkthrough against the paper daily log; rollout/configuration follows user acceptance
 Status: Step 5 implemented locally; production mailbox/contact configuration and rollout remain outstanding
+
+## Current priority - daily bore input screen
+
+The user redirected the work to focus on highly user-friendly daily bore data entry, using their `Daily Log Example.pdf` as the reference. Further email/approval work is secondary to getting the daily input experience right. The PDF's printed guidance is reference material, not authority to impose new mandatory fields or send data anywhere. Preserve the Step 5 foundations and existing offline/idempotent sync while refining the UI.
+
+Rig logs now open a Daily log screen with prefilled client/job/location/plant/date; bore selection and consultant/permit/purpose/bore size/depth inputs; a Start/Finish/Work Details table with direct description editing; AM/PM SWL with paired bore depths; meter serial/start/finish with L or m³ units; common materials, tests/services, subcontractor use, crew and comments. Section shortcuts keep the work table and readings accessible. Extra item/allocation/technical functions remain available under secondary controls. Ancillary screens remain unchanged. Submit/sign-off follows data entry.
+
+`src/components/DailySheet.jsx` and `src/domain/dailySheet.js` implement the screen and quantity shortcuts. Additive `points[].dailyDetails` is validated in `src/domain/boreDetails.js` and persisted to the aggregate and `log_points.daily_details` by migration `005_daily_bore_details.sql` after 004. These are daily-record snapshots/observations; point creation and technical modules remain in Field. No Ops/Field schema or live data was changed. Existing catalogue matches are reused where possible; otherwise quick quantities use the existing Other item mechanism, without inventing catalogue/pricing authority. Blank/unrecorded remains distinct from explicit zero/Not used. Partial readings autosave; incomplete or impossible readings are flagged at review/submission.
+
+Local browser coverage in `test/e2e/daily-sheet.spec.js` exercises the source-sheet inputs, offline reload, two-bore separation, and real Postgres sync. Screenshots are produced for phone and desktop review. User walkthrough of a representative real daily log is the next product checkpoint; do not jump back to rollout/approval features before reviewing this entry experience. No deployment is authorised.
+
+Validation for this refinement: 29 unit tests, lint, contract examples and the production/PWA container build passed. All 13 existing browser/API regression tests passed; the daily-sheet browser test passed again after the final dialog-refresh and section-navigation refinements. Reviewed previews are saved under `output/ui/daily-log-{mobile,work,desktop}.png`. Test data and email captures used only the isolated local Compose fixtures.
 
 ## Objective for the new thread
 
@@ -140,3 +152,5 @@ Production gaps: service mailbox, Entra application, restricted mailbox authoris
 Samples in `output/pdf/step5-*` cover long Water/Geotech descriptions and a drawn signature. Their multipage layouts were rendered for visual QA. New tests are in `test/submission.test.js` and `test/e2e/submission.spec.js`, including full offline browser restart, lost response replay, PDF failure and true failed/unknown sends. The previous Geotech browser assertion now identifies the newly created record rather than assuming synchronization revision zero or selecting a historical unfinished fixture. Final verification is recorded below.
 
 Final local verification: 25 unit/domain/IndexedDB tests, 13 browser/real-Postgres tests, lint, contract examples, production PWA/container build and draft-PDF visual/text checks pass. Critical submission/signature/Send paths were rechecked after payload cleanup; runtime dependency audit reports no production dependency vulnerabilities. The full browser suite includes the original seven Step 4 cases. Representative PDFs have two Geotech pages, two Water pages and three signed pages, with draft marking/page numbers on every page. Existing production acceptance gaps in the original handoff remain; these checks use isolated fixtures and do not claim live assignments, real-device LAN PWA acceptance or Microsoft 365 receipt. Changes remain uncommitted, including the preserved original documentation edits.
+
+Verification follow-up: after the successful full 13-test run, signature capture/PDF sizing was adjusted to preserve the same 8:3 drawing aspect ratio. All 25 unit tests, lint and the container build passed again; the updated signed sample was rendered and inspected. Docker Desktop subsequently became unreachable, so the targeted final browser recheck failed in fixture setup before running application assertions. Restart Docker Desktop, run `docker compose -f compose.local.yaml up --build -d`, then `npm.cmd run test:e2e` to close this remaining local verification item before rollout.

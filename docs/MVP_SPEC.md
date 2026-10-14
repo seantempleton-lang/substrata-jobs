@@ -3,7 +3,9 @@
 Status: Draft baseline - implementation in progress  
 Last updated: 14 October 2026  
 Product scope: Water and Geotech
-Current delivery stage: Step 5 implemented locally; production configuration and staging acceptance pending
+Current delivery stage: Daily bore input UI refinement against the example log sheet; Step 5 foundations retained
+
+The current user priority is a simple daily bore input screen centred on the paper daily log's fields and work table. Rig records open the combined Daily log screen before review/sign-off. The entry experience must be reviewed with the user before further rollout, email configuration or Step 6 work. Existing offline saving, stable point references, immutable submitted revisions and synchronization remain requirements.
 
 ## 1. Purpose
 

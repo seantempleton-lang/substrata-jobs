@@ -192,7 +192,7 @@ test("browser contact selection, explicit Send and lost-response check send one 
   await expect(page.getByRole("alert")).toBeHidden();
   const capture=await playwright.request.newContext({baseURL:"http://localhost:18082"});const messages=(await(await capture.get("/api/v1/messages")).json()).messages;
   expect(messages.filter(m=>m.To.some(to=>to.Address===recipient))).toHaveLength(1);await capture.dispose();
-  await page.getByRole("button",{name:"Go back"}).click();await expect(page.getByLabel("Daily notes")).toBeDisabled();
+  await page.getByRole("button",{name:"Go back"}).click();await expect(page.getByLabel("Daily comments")).toBeDisabled();
   await page.getByRole("button",{name:"Review completed shift"}).click();await expect(page.getByRole("button",{name:"Submit daily log",exact:true})).toBeHidden();
   await page.screenshot({path:"test-results/step5-client-delivery.png",fullPage:true});
 });

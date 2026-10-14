@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import { acknowledgementLabel } from "../src/domain/submission.js";
+import { boreRecordLines } from "../src/domain/boreDetails.js";
 
 export const DRAFT_MARK = "DRAFT - Awaiting Supervisor Approval";
 const time = value => value ? new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Not recorded";
@@ -13,7 +14,8 @@ export function clientSections(log) {
     ["Shift and crew", [`${log.shift.label} shift | ${time(log.shift.startedAt)} to ${time(log.shift.endedAt)} (New Zealand time)`, `Primary driller: ${log.owner.displayName}`,
       ...log.crew.map(p => `${p.displayNameSnapshot}${p.roleSnapshot ? ` - ${p.roleSnapshot}` : ""} | ${time(p.attendedFrom)} to ${time(p.attendedTo)}`)]],
     ["Point progress", log.points.length ? log.points.map(p => `${p.pointId} | ${p.startDepthM ?? "Not recorded"} to ${p.endDepthM ?? "Not recorded"} m | ${p.endStatus || "Not recorded"}\n${time(p.startedAt)} to ${time(p.endedAt)}`) : ["General site work; no points recorded."]],
-    ["Bore and setup", Object.entries(log.setup || {}).filter(([key, value]) => ["boreSize", "details", "drillingMethod", "setupNotes", "casing", "waterSupply"].includes(key) && value).map(([key, value]) => `${key.replace(/([A-Z])/g, " $1")}: ${value}`)],
+    ["Daily bore details and readings", log.points.flatMap(point => { const lines = boreRecordLines(point); return lines.length ? [`${point.pointId}\n${lines.join("\n")}`] : []; })],
+    ["Bore and setup", Object.entries(log.setup || {}).filter(([key, value]) => ["consultant", "boreSize", "details", "drillingMethod", "setupNotes", "casing", "waterSupply"].includes(key) && value).map(([key, value]) => `${key.replace(/([A-Z])/g, " $1")}: ${value}`)],
     ["Activities", [...log.activities].sort((a, b) => a.sequence - b.sequence).map(a => `${time(a.startedAt)} to ${time(a.endedAt)} | ${point(a.pointSegmentId)}\n${a.activityLabelSnapshot}${a.notes ? `\n${a.notes}` : ""}`)],
     [log.division === "Water" ? "Materials, services and readings" : "Materials, services and measurements", log.items.length ? log.items.map(i => `${i.itemLabelSnapshot} | ${i.quantity} ${i.unit} | ${point(i.pointSegmentId)}${i.notes ? `\n${i.notes}` : ""}`) : ["No quantities or readings recorded."]],
     ["Comments", [log.notes || "No daily comments recorded."]],

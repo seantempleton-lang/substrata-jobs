@@ -1,4 +1,5 @@
 import { acknowledgementErrors } from "./submission.js";
+import { boreDetailErrors, boreReadingErrors } from "./boreDetails.js";
 const CONTRACT_VERSION = "1.0";
 const TIMEZONE = "Pacific/Auckland";
 
@@ -236,6 +237,7 @@ export function validationErrors(log) {
   if (log.crew.some((attendance) => !attendance.attendedTo)) add("ATTENDANCE_UNFINISHED", "All crew attendance periods must be finished.", "crew");
   errors.push(...draftErrors(log));
   errors.push(...acknowledgementErrors(log));
+  errors.push(...boreReadingErrors(log));
 
   if (log.logType === "rig_shift") {
     if (!log.job || !log.equipment) add("RIG_CONTEXT_REQUIRED", "A rig shift requires a job and equipment.", "job");
@@ -295,6 +297,7 @@ export function draftErrors(log) {
     add("ACTIVITY_BOUNDARY_INVALID", "First and last activities must match the shift boundaries.", "activities");
   if (activities.filter(activity => !activity.endedAt).length !== (log.shift.endedAt ? 0 : 1)) add("ACTIVITY_CURRENT_INVALID", "Only the final activity may be unfinished during an open shift.", "activities");
   for (const point of log.points) {
+    errors.push(...boreDetailErrors(point));
     if (point.endedAt && (!point.endStatus || point.endDepthM == null)) add("POINT_UNFINISHED", "A finished point needs its depth and status.", "points");
     if ([point.startDepthM, point.endDepthM].some(value => value != null && (!Number.isFinite(value) || value < 0)) ||
       (point.endDepthM != null && point.endDepthM < (point.startDepthM ?? 0))) add("POINT_DEPTH_INVALID", "Point depths must be valid and cannot decrease.", "points");
@@ -347,10 +350,15 @@ export function correctActivity(source, id, details) {
 export function continueDailyLog(previous, options) {
   if (!previous.shift.endedAt) fail("HANDOVER_UNFINISHED", "End the previous shift before continuing its work.", "shift");
   const point = previous.points.at(-1);
-  return createDailyLog({ ...options, assignment: options.assignment ?? previous.assignmentSnapshot ?? {
+  const next = createDailyLog({ ...options, assignment: options.assignment ?? previous.assignmentSnapshot ?? {
     assignmentId: previous.assignmentId, job: previous.job, equipment: previous.equipment, personnel: [], points: [],
   }, ancillary: previous.logType === "ancillary", previous,
     startingPoint: options.startingPoint === undefined ? (point ? { jobNumber: point.jobNumber, pointId: point.pointId } : null) : options.startingPoint,
     startDepthM: options.startDepthM === undefined ? point?.endDepthM ?? null : options.startDepthM,
     setup: { ...previous.setup, ...options.setup, previousPointStatus: point?.endStatus ?? null } });
+  for (const segment of next.points) {
+    const prior = [...previous.points].reverse().find(p => p.pointId === segment.pointId && p.jobNumber === segment.jobNumber);
+    if (prior?.dailyDetails) segment.dailyDetails = Object.fromEntries(Object.entries(prior.dailyDetails).filter(([key]) => ["boreSize", "permitNumber", "purpose", "gridReference", "waterMeterSerial", "waterMeterUnit"].includes(key)));
+  }
+  return next;
 }

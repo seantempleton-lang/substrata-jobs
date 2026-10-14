@@ -28,6 +28,19 @@
     "status": { "enum": ["draft", "submitted", "under_review", "returned", "awaiting_driller_confirmation", "approved", "reopened"] },
     "serverRevision": { "type": "integer", "minimum": 0 },
     "currentDocumentRevision": { "type": "integer", "minimum": 0 },
+    "officeReview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "comment", "reviewerId", "reviewerName", "reviewedAt", "documentRevision", "selfReview"],
+      "properties": {
+        "action": { "enum": ["approve", "return"] },
+        "comment": { "type": ["string", "null"], "maxLength": 4000 },
+        "reviewerId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "reviewerName": { "type": "string" },
+        "reviewedAt": { "$ref": "common.schema.json#/$defs/instant" },
+        "documentRevision": { "type": "integer", "minimum": 1 },
+        "selfReview": { "type": "boolean" }
+      }
+    },
     "carriedFromLogId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },
     "assignmentSnapshot": { "oneOf": [{ "$ref": "bootstrap.schema.json#/properties/assignments/items" }, { "type": "null" }] },
     "setup": { "type": "object", "additionalProperties": { "type": ["string", "null"] } },
@@ -64,7 +77,8 @@
           "endedAt": { "oneOf": [{ "$ref": "common.schema.json#/$defs/instant" }, { "type": "null" }] },
           "startDepthM": { "type": ["number", "null"], "minimum": 0 },
           "endDepthM": { "type": ["number", "null"], "minimum": 0 },
-          "endStatus": { "type": ["string", "null"] }
+          "endStatus": { "type": ["string", "null"] },
+          "dailyDetails": { "$ref": "#/$defs/boreDetails" }
         }
       }
     },
@@ -171,6 +185,7 @@
     "createdAt": { "$ref": "common.schema.json#/$defs/instant" },
     "updatedAt": { "$ref": "common.schema.json#/$defs/instant" }
   },
+  "$defs": { "boreDetails": {"type":"object","additionalProperties":false,"properties":{"boreSize":{"type":"string","maxLength":1000},"permitNumber":{"type":"string","maxLength":1000},"purpose":{"type":"string","maxLength":1000},"gridReference":{"type":"string","maxLength":1000},"waterMeterSerial":{"type":"string","maxLength":1000},"waterMeterUnit":{"enum":["L","m³"]},"currentDepthM":{"type":"number","minimum":0},"waterLevelAm":{"type":"number","minimum":0},"waterLevelBoreDepthAm":{"type":"number","minimum":0},"waterLevelPm":{"type":"number","minimum":0},"waterLevelBoreDepthPm":{"type":"number","minimum":0},"waterMeterStart":{"type":"number","minimum":0},"waterMeterFinish":{"type":"number","minimum":0}}} },
   "allOf": [
     {
       "if": { "properties": { "logType": { "const": "rig_shift" } } },

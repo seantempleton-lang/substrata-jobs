@@ -367,3 +367,61 @@ button:disabled { opacity: .55; cursor: default; }
 .delivery-entry small { display: block; }
 .duplicate-confirm { display: flex; gap: 8px; align-items: flex-start; }
 .duplicate-confirm input { width: auto; }
+.daily-sheet { padding-bottom: 20px; }
+.daily-sheet-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:0 0 16px; }
+.daily-sheet-heading .eyebrow { color:var(--muted); margin:0 0 4px; font-size:9px; letter-spacing:.12em; }
+.daily-sheet-heading h2 { margin:0; font-size:26px; letter-spacing:-.04em; }
+.daily-save { font-size:10px; color:var(--green); background:var(--green-soft); padding:7px 9px; border-radius:20px; white-space:nowrap; }
+.daily-context { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:17px; border:1px solid var(--line); border-radius:12px; background:#fff; margin-bottom:18px; }
+.daily-context>div { display:grid; gap:4px; }
+.daily-context span,.daily-crew small { font-size:9px; font-weight:700; letter-spacing:.08em; color:var(--muted); }
+.daily-context strong { font-size:13px; font-weight:650; }
+.daily-context small { font-size:11px; color:var(--muted); }
+.daily-sheet .wide { grid-column:1/-1; }
+.daily-section { background:white; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; }
+.daily-section>header { display:flex; align-items:flex-start; gap:9px; margin-bottom:16px; }
+.daily-section>header>div { flex:1; min-width:0; }
+.daily-section h3 { margin:1px 0 0; font-size:16px; letter-spacing:-.02em; }
+.daily-section header p { color:var(--muted); font-size:11px; line-height:1.5; margin:5px 0 0; }
+.daily-step { display:grid; place-items:center; min-width:23px; height:23px; border-radius:7px; background:var(--gold-soft); color:#76511c; font-size:11px; font-weight:800; }
+.daily-link { border:0; background:none; padding:3px 0; color:var(--blue); font-size:10px; display:flex; align-items:center; gap:4px; cursor:pointer; }
+.bore-selector { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+.bore-selector button { display:flex; align-items:center; gap:5px; padding:9px 11px; border:1px solid var(--line); background:white; border-radius:8px; font-size:12px; cursor:pointer; }
+.bore-selector button.selected { border-color:var(--deep); color:white; background:var(--deep); }
+.daily-point-action { display:flex; align-items:center; justify-content:space-between; width:100%; border:0; border-radius:8px; background:var(--warm); padding:11px; margin-bottom:16px; font-size:12px; cursor:pointer; text-align:left; }
+.daily-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px 12px; }
+.sheet-input { min-width:0; display:grid; align-content:start; gap:6px; }
+.sheet-input>span { font-size:11px; line-height:1.4; color:#425467; }
+.sheet-input>div { position:relative; min-width:0; }
+.sheet-input input,.sheet-input textarea,.sheet-input select { width:100%; min-width:0; border:1px solid #cbd5df; background:#fbfcfd; border-radius:8px; padding:11px 10px; font-size:14px; color:var(--ink); }
+.sheet-input input:focus,.sheet-input textarea:focus { background:#fff; border-color:var(--blue); }
+.sheet-input>div:has(small) input { padding-right:45px; }
+.sheet-input small { position:absolute; right:10px; top:13px; font-size:10px; color:var(--muted); pointer-events:none; }
+.daily-progress { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:13px; margin-top:15px; border-top:1px solid var(--line); font-size:10px; color:var(--muted); }
+.daily-progress button { border:0; background:none; text-decoration:underline; color:var(--blue); cursor:pointer; padding:4px; font-size:10px; }
+.daily-hint { margin:12px 0 0; font-size:10px; line-height:1.6; color:var(--muted); }
+.work-table-head { display:grid; grid-template-columns:62px 62px 1fr; gap:5px; padding:0 0 9px; font-size:9px; font-weight:700; letter-spacing:.06em; color:var(--muted); }
+.work-entry { display:grid; grid-template-columns:124px 1fr; gap:5px; padding:13px 0; border-top:1px solid var(--line); }
+.work-entry-time { display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:5px; border:0; background:none; padding:10px 0; font-size:11px; color:var(--blue); cursor:pointer; text-align:left; }
+.work-entry-time span { color:var(--muted); font-size:10px; }
+.work-entry-detail { min-width:0; }
+.work-entry-detail>small { display:block; font-size:10px; line-height:1.5; color:var(--muted); margin-bottom:6px; }
+.work-entry-detail .sheet-input>span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.work-entry-detail textarea { font-size:12px; line-height:1.5; min-height:75px; }
+.daily-next { margin-top:10px; min-height:45px; }
+.daily-section h4 { font-size:12px; margin:20px 0 13px; }
+.daily-section h4:first-of-type { margin-top:0; }
+.daily-meter-total { background:var(--blue-soft); border-radius:7px; padding:10px; font-size:12px; }
+.daily-more { margin-top:14px; font-size:12px; color:var(--blue); }
+.daily-more summary { cursor:pointer; padding:8px 0; }
+.daily-more .daily-fields { margin-top:12px; }
+.daily-subcontractor { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; padding:9px 0; border-top:1px solid #eef1f4; }
+.daily-subcontractor select { max-width:135px; border:1px solid var(--line); border-radius:8px; background:white; padding:10px 6px; font-size:11px; }
+.daily-crew { display:grid; gap:12px; margin-bottom:18px; }
+.daily-crew span { display:grid; gap:4px; }
+.daily-crew strong { font-size:12px; font-weight:600; line-height:1.5; }
+.daily-other { padding:0 12px 12px; }
+@media(max-width:380px) { .daily-section { padding:13px; } .work-table-head { grid-template-columns:47px 47px 1fr; } .work-entry { grid-template-columns:94px 1fr; } .work-entry-time { font-size:10px; } }
+.daily-jumps { position:sticky; top:0; z-index:2; display:flex; gap:3px; justify-content:space-between; background:var(--paper); padding:8px 0 10px; margin-bottom:5px; border-bottom:1px solid var(--line); }
+.daily-jumps button { border:1px solid var(--line); border-radius:18px; padding:8px 10px; background:white; font-size:10px; cursor:pointer; }
+.daily-section { scroll-margin-top:56px; }

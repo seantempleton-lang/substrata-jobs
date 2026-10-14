@@ -145,10 +145,10 @@ async function replaceChildren(client, log) {
   await client.query("delete from jobs_app.log_points where daily_log_id = $1", [log.id]);
   for (const point of log.points) await client.query(
     `insert into jobs_app.log_points
-      (id,daily_log_id,job_number,point_id,sequence,started_at,ended_at,start_depth_m,end_depth_m,end_status)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      (id,daily_log_id,job_number,point_id,sequence,started_at,ended_at,start_depth_m,end_depth_m,end_status,daily_details)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)`,
     [point.id, log.id, point.jobNumber, point.pointId, point.sequence, point.startedAt, point.endedAt,
-      point.startDepthM, point.endDepthM, point.endStatus],
+      point.startDepthM, point.endDepthM, point.endStatus, JSON.stringify(point.dailyDetails || {})],
   );
   for (const attendance of log.crew) await client.query(
     `insert into jobs_app.crew_attendance
@@ -223,7 +223,14 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
       if (!job.rowCount || job.rows[0].job_number !== allocation.jobNumber) throw problem("JOB_IDENTITY_MISMATCH", "Payroll jobId does not resolve to jobNumber.", "activities.allocation");
     }
     const revision = (existing.rowCount ? Number(existing.rows[0].server_revision) : 0) + 1;
-    const log = mutation.payload;
+    const log = structuredClone(mutation.payload);
+    if (log.status !== (existing.rows[0]?.status || 'draft')) throw problem('WORKFLOW_STATE_FORBIDDEN', 'Review states can only be changed by the office workflow.', 'status');
+    // Office decisions are server-owned, even when a field device sends an old
+    // or modified copy during returned-log synchronization.
+    for (const field of ['officeReview', 'approvedAt', 'submittedAt', 'requiresDrillerAction']) {
+      delete log[field];
+      if (existing.rows[0]?.aggregate?.[field] !== undefined) log[field] = existing.rows[0].aggregate[field];
+    }
     log.currentDocumentRevision = Number(existing.rows[0]?.current_document_revision || 0);
     await client.query(
       `insert into jobs_app.daily_logs (
@@ -293,7 +300,7 @@ export async function readDailyLog(id, user) {
     serverRevision: Number(row.server_revision), currentDocumentRevision: row.current_document_revision, notes: row.notes,
     clientAcknowledgement: row.client_acknowledgement, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
     shift: { label: row.shift_label, startedAt: iso(row.shift_started_at), endedAt: iso(row.shift_ended_at), timezone: row.timezone },
-    points: points.rows.map(p => ({ id: p.id, sequence: p.sequence, jobNumber: p.job_number, pointId: p.point_id, startedAt: iso(p.started_at), endedAt: iso(p.ended_at), startDepthM: p.start_depth_m == null ? null : Number(p.start_depth_m), endDepthM: p.end_depth_m == null ? null : Number(p.end_depth_m), endStatus: p.end_status })),
+    points: points.rows.map(p => ({ id: p.id, sequence: p.sequence, jobNumber: p.job_number, pointId: p.point_id, startedAt: iso(p.started_at), endedAt: iso(p.ended_at), startDepthM: p.start_depth_m == null ? null : Number(p.start_depth_m), endDepthM: p.end_depth_m == null ? null : Number(p.end_depth_m), endStatus: p.end_status, dailyDetails: p.daily_details || {} })),
     crew: crew.rows.map(p => ({ id: p.id, userId: p.user_id, employeeCodeSnapshot: p.employee_code_snapshot, displayNameSnapshot: p.display_name_snapshot, roleSnapshot: p.role_snapshot, attendedFrom: iso(p.attended_from), attendedTo: iso(p.attended_to) })),
     activities: activities.rows.map(a => ({ id: a.id, sequence: a.sequence, pointSegmentId: a.point_segment_id, activityCode: a.activity_code, activityLabelSnapshot: a.activity_label_snapshot, startedAt: iso(a.started_at), endedAt: iso(a.ended_at), allocation: a.allocation_type === "job" ? { type: "job", jobId: a.allocation_job_id, jobNumber: a.allocation_job_number_snapshot } : { type: "ancillary", ancillaryCode: a.ancillary_code }, notes: a.notes })),
     items: items.rows.map(i => ({ id: i.id, pointSegmentId: i.point_segment_id, itemType: i.item_type, itemCode: i.item_code, itemLabelSnapshot: i.item_label_snapshot, quantity: Number(i.quantity), unit: i.unit, notes: i.notes })),
@@ -303,7 +310,8 @@ export async function readDailyLog(id, user) {
 export async function listDailyLogs(user, office = false) {
   if (office && !["Supervisor", "Administrator", "SuperUser"].includes(user.appRole)) throw Object.assign(problem("OFFICE_FORBIDDEN", "Supervisor access is required."), { statusCode: 403 });
   const result = await pool.query(`select id from jobs_app.daily_logs where ($1::boolean or owner_user_id=$2)
-    and (shift_started_at>=now()-interval '14 days' or status in ('draft','returned','reopened')) order by shift_started_at desc`, [office, user.userId]);
+    and (shift_started_at>=now()-interval '14 days' or updated_at>=now()-interval '14 days'
+      or status in ('draft','submitted','under_review','returned','awaiting_driller_confirmation','reopened')) order by shift_started_at desc`, [office, user.userId]);
   return Promise.all(result.rows.map(row => readDailyLog(row.id, user)));
 }
 

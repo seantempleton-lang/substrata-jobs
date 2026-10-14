@@ -1,5 +1,19 @@
 # Coolify deployment
 
+## Daily log walkthrough test redeploy - 14 October 2026
+
+The next requested checkpoint is a Coolify test redeploy so the user can enter a full drilling day and report UI changes. The Daily log refinement is local until its files are committed and pushed to Coolify's configured branch (`master` in this checkout). Include migration `005_daily_bore_details.sql` and the new source files; a redeploy of the previous commit will not include the screen.
+
+Local preflight on 14 October 2026 passed: 32 unit tests, all 14 browser/API tests, lint, contract validation, production/PWA build and Docker build. The local image reports migrations 001-005 applied and `/api/v1/health` reports `ok: true`. Preflight corrected a missing employee-code test fixture and made the ancillary browser test assert its newly created log ID rather than an unrelated historical record. These results establish a test-deployment candidate; they do not verify Coolify's runtime permissions, current assignments or phone/browser behavior.
+
+Retain the existing Dockerfile, port 8080, database connections, Field integration settings and working cookie/base-URL settings. With `RUN_MIGRATIONS=true`, startup runs unapplied migrations in order; 004 and 005 must be present. The migration connection must own or be allowed to alter `jobs_app.log_points`. If migrations run under a separate owner, retain the Step 5 runtime grants below. Email configuration is not needed for the entry walkthrough; `EMAIL_PROVIDER=unconfigured` leaves submission and PDF generation available. Device signatures require the separately configured encryption key described below.
+
+After the pushed commit is deployed, check the startup migration log and `/health` plus `/api/v1/health`. In the Coolify application terminal, `npm run db:migrate:status` should show 001-005 applied. Confirm a current Ops job/rig assignment is visible, then open a rig daily record and verify the **Daily log** screen and Bore / Work / Water / Materials / Comments shortcuts. Existing installed clients may need an online close/reopen or reload to pick up the updated service worker; do not clear device storage containing unsynced records.
+
+Walk through pre-start, drilling work entries with times/descriptions, starting/current depths, AM/PM water readings, meter readings, quantities/tests, crew changes and daily comments. Change to a second bore and confirm the first bore's readings/quantities stay separate. Correct an earlier entry, reload with a saved draft, finish the shift and review the record. Note any unclear labels, extra taps, missing fields or unsuitable units. Test submission/PDF separately if desired; a client signature is optional. Email sending is a separate deliberate action.
+
+For phone offline/PWA acceptance, use a valid HTTPS origin. The currently documented LAN address `http://substrata-jobs.mcm` is suitable for the connected UI walkthrough but is not a secure context for service-worker acceptance. Disconnect/reload/reconnect and confirm synchronization when testing on HTTPS.
+
 ## Resource configuration
 
 Deploy Substrata Jobs as a separate Dockerfile application in the same Coolify production environment as Ops Manager.
@@ -125,6 +139,8 @@ After deployment:
 If `/health` succeeds but `/api/v1/health` returns 503, the container is running and the fault is limited to database configuration, permissions, or migrations.
 
 ## Step 5 submission and client output
+
+Daily input UI refinement subsequently adds migration `005_daily_bore_details.sql`, after 004. It adds `daily_details jsonb` to the existing Jobs-owned `log_points` table; table-level runtime SELECT/INSERT grants continue to cover that column. No Ops/Field migrations or new external providers are required. The user has prioritised review of the paper-based entry experience before rollout; these changes remain local until that review.
 
 This step has been developed against the isolated local fixtures. No production deployment, live migration or real client email is authorised by this work. Apply migration `004_submission_output.sql` after the existing immutable migrations 001-003 through the normal controlled rollout. Do not replay `contracts/v1/database-model.sql`; it is a design reference.
 

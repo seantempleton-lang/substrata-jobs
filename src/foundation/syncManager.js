@@ -1,6 +1,7 @@
-import { sendSyncBatch, getServerLogs, uploadSignature, submitLog } from "./api";
+import { sendSyncBatch, getServerLogs, getServerLog, uploadSignature, submitLog } from "./api";
+import { reviewUpdates } from './reviewUpdates';
 import { getDeviceIdentity } from "./device";
-import { applySyncAcknowledgements, claimPendingMutations, markMutations, mergeServerLogs, setSyncMetadata, getWorkflowRecords, putWorkflowRecord, getQueueState, getDailyLog, completeSubmission, purgeEligibleLogs, claimSubmission } from "./offlineStore";
+import { applySyncAcknowledgements, claimPendingMutations, markMutations, mergeServerLogs, setSyncMetadata, getWorkflowRecords, putWorkflowRecord, getQueueState, getDailyLog, getDailyLogs, completeSubmission, purgeEligibleLogs, claimSubmission } from "./offlineStore";
 import { contentHash, submissionContent } from "../domain/submission";
 
 let running;
@@ -55,7 +56,8 @@ async function synchronize(userId) {
         validationErrors: error.validationErrors, message: error.message });
     }
   }
-  await mergeServerLogs((await getServerLogs()).logs);
+  const serverLogs = (await getServerLogs()).logs;
+  await mergeServerLogs(await reviewUpdates(serverLogs, await getDailyLogs(userId), getServerLog));
   await purgeEligibleLogs(userId);
   return { count };
 }

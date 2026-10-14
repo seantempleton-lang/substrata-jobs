@@ -108,7 +108,7 @@ export async function submitLog(logId, body, user) {
       validateDailyLog(row.aggregate, user.userId);
       try { assertSubmittable(row.aggregate); } catch (error) { throw problem(error.code, error.message, 422, { validationErrors: error.validationErrors }); }
       revision = Number(row.current_document_revision) + 1;
-      const snapshot = { ...row.aggregate, status: "submitted", serverRevision: Number(row.server_revision) + 1, currentDocumentRevision: revision, submittedAt: new Date().toISOString() };
+      const snapshot = { ...row.aggregate, status: "submitted", requiresDrillerAction: false, serverRevision: Number(row.server_revision) + 1, currentDocumentRevision: revision, submittedAt: new Date().toISOString() };
       let signatureId = null;
       if (snapshot.clientAcknowledgement.status === "signed_on_device") {
         const asset = await client.query("select * from jobs_app.signature_assets where id=$1 and daily_log_id=$2 and actor_user_id=$3", [snapshot.clientAcknowledgement.signatureUploadId, logId, user.userId]);

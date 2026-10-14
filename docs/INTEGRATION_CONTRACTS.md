@@ -199,6 +199,8 @@ The server returns an acknowledgement per mutation:
 
 Submitted or approved revisions are never overwritten through sync. Corrections create a new draft/revision workflow.
 
+Daily bore input adds optional `points[].dailyDetails` for daily-record bore context and readings. Migration `005_daily_bore_details.sql` persists it to `jobs_app.log_points.daily_details` as well as the aggregate; existing drafts without it remain valid. Bore/permit/purpose/grid context, current depth, paired AM/PM depth-to-water and bore depths, and meter serial/start/finish/unit are log snapshots, not Field master-data writes. Partial readings may synchronize as drafts; completeness is checked on submission. Quick material/service quantities remain existing `items` with a point-segment reference. Empty entries are absent; explicit zero/Not used remains recorded.
+
 The bootstrap `syncCursor` is opaque. Incremental pulls use:
 
 ```http
