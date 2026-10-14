@@ -1,3 +1,5 @@
+import { sha256Hex } from "./crypto.js";
+
 // Stable content identities shared by the device and server. Sync/audit fields
 // cannot change the work a client acknowledged.
 export function canonical(value) {
@@ -22,8 +24,7 @@ export function serverSnapshot(log) {
 }
 
 export async function contentHash(value) {
-  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical(value)));
-  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, "0")).join("");
+  return sha256Hex(new TextEncoder().encode(canonical(value)));
 }
 
 export const acknowledgementOutcomes = [

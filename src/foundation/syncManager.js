@@ -1,3 +1,4 @@
+import { randomId } from "../domain/crypto.js";
 import { sendSyncBatch, getServerLogs, getServerLog, uploadSignature, submitLog } from "./api";
 import { reviewUpdates } from './reviewUpdates';
 import { getDeviceIdentity } from "./device";
@@ -12,7 +13,7 @@ async function synchronize(userId) {
     if (!mutations.length) break;
     let response;
     try {
-      response = await sendSyncBatch({ batchId: crypto.randomUUID(), deviceId: getDeviceIdentity(), mutations: mutations.map(m => ({
+      response = await sendSyncBatch({ batchId: randomId(), deviceId: getDeviceIdentity(), mutations: mutations.map(m => ({
         mutationId: m.mutationId, entityType: m.entityType, entityId: m.entityId, operation: m.operation,
         baseRevision: m.baseRevision, occurredAt: m.occurredAt, payload: m.payload,
       })) });

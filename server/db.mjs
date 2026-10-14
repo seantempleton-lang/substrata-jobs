@@ -1,6 +1,8 @@
 import pg from "pg";
 
 const { Pool } = pg;
+// Calendar dates stay date-only even when the API host uses NZ local time.
+pg.types.setTypeParser(1082, value => value);
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

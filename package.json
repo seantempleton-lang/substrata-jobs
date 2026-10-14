@@ -21,6 +21,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@noble/hashes": "2.4.0",
     "express": "^5.2.1",
     "lucide-react": "^0.468.0",
     "nodemailer": "^10.1.0",

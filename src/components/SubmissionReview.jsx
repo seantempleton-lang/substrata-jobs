@@ -1,3 +1,4 @@
+import { randomId } from "../domain/crypto.js";
 import { boreRecordLines } from "../domain/boreDetails";
 import { useEffect, useRef, useState } from "react";
 import { Check, RefreshCw } from "lucide-react";
@@ -41,7 +42,7 @@ export function AcknowledgementForm({ log, busy, save, reportError }) {
         const validStrokes = strokes.filter(stroke => stroke.length >= 2);
         if (!validStrokes.length || !name.trim()) throw new Error("Enter the representative's name and draw a signature.");
         if (!signatureSnapshot) throw new Error("Clear this drawing and capture a new signature against the reviewed work.");
-        const id = crypto.randomUUID();
+        const id = randomId();
         ack = { status: outcome, signerName: name.trim(), companyRole: role.trim() || null, clientEmail: email.trim() || null, signedAt: signatureTime, signatureUploadId: id, contentHash: await contentHash(workContent(signatureSnapshot)) };
         asset = { id, logId: log.id, userId: log.owner.userId, state: "pending", drawing: { strokes: validStrokes }, snapshot: { ...signatureSnapshot, clientAcknowledgement: ack } };
       } else ack = outcome === "not_required" ? { status: "not_required" } : { status: "not_signed", reasonCode: outcome, reasonNotes: note.trim() || null, clientEmail: email.trim() || null };
@@ -77,11 +78,11 @@ export default function SubmissionReview({ w, edit, acknowledge, continueWork })
     return () => { cancelled = true; };
   }, [log, reportError]);
   const submitted = !["draft", "returned", "reopened"].includes(log.status);
-  return <div className="screen"><section className="review-hero"><h2>{submitted ? "Submitted daily log" : "Review daily log"}</h2><p>{log.job?.title || "Ancillary workday"}</p></section><div className="form-section">
+  return <div className="screen"><section className="review-hero"><h2>{log.status === 'approved' ? 'Approved daily log' : submitted ? "Submitted daily log" : "Review daily log"}</h2><p>{log.job?.title || "Ancillary workday"}</p></section><div className="form-section">
     {log.status === 'returned' && <div className="form-card" role="status"><h3>Returned for correction</h3><p>{log.officeReview?.comment || 'Review the returned record and correct it before resubmitting.'}</p><small>{log.officeReview?.reviewerName} · submitted revision {log.officeReview?.documentRevision || log.currentDocumentRevision}</small></div>}
     {log.status === 'approved' && <div className="info-strip"><Check size={18} />Approved revision {log.currentDocumentRevision} · {log.officeReview?.reviewerName}{log.officeReview?.selfReview && ' · self-review recorded'}</div>}
     <p>{displayTime(log.shift.startedAt)} → {displayTime(log.shift.endedAt)}</p>
-    {submitted ? <div className="info-strip"><Check size={18} />Submitted · document revision {log.currentDocumentRevision}</div> : errors.length ? <ul className="validation-list">{errors.map((error, i) => <li key={i}>{error.message} {!w.locked && <button className="text-button" onClick={() => edit(error.field)}>Review {error.field}</button>}</li>)}</ul> : <div className="info-strip"><Check size={18} />Field entry is complete and ready for submission.</div>}
+    {submitted ? <div className="info-strip"><Check size={18} />{log.status === 'approved' ? 'Approved' : 'Submitted'} · document revision {log.currentDocumentRevision}</div> : errors.length ? <ul className="validation-list">{errors.map((error, i) => <li key={i}>{error.message} {!w.locked && <button className="text-button" onClick={() => edit(error.field)}>Review {error.field}</button>}</li>)}</ul> : <div className="info-strip"><Check size={18} />Field entry is complete and ready for submission.</div>}
     <details className="form-card"><summary>Review recorded work</summary><p>{log.job?.siteName} {log.equipment?.equipmentCode}</p>{log.crew.map(p => <p key={p.id}>{p.displayNameSnapshot}: {displayTime(p.attendedFrom)} → {displayTime(p.attendedTo)}</p>)}{log.points.map(p => <p key={p.id}>{p.pointId}: {p.startDepthM ?? "—"} → {p.endDepthM ?? "—"} m · {p.endStatus}</p>)}{log.points.flatMap(point => boreRecordLines(point).map((line, i) => <p key={`${point.id}:${i}`}>{point.pointId} · {line}</p>))}{log.activities.map(a => <p key={a.id}>{displayTime(a.startedAt)} → {displayTime(a.endedAt)} · {a.activityLabelSnapshot}<br />{a.notes}</p>)}{log.items.map(i => <p key={i.id}>{i.itemLabelSnapshot}: {i.quantity} {i.unit} · {i.notes}</p>)}<p>{log.notes}</p></details>
     {log.logType === "rig_shift" && <div className="form-card"><h3>Client acknowledgement</h3><p>{stale ? "Earlier signature does not cover this changed content. It will be retained with the earlier work; this submission will be unsigned." : acknowledgementLabel(log.clientAcknowledgement)}</p>{log.clientAcknowledgement.signerName && <p>{log.clientAcknowledgement.signerName} · {log.clientAcknowledgement.companyRole}</p>}{!w.locked && <button className="secondary-button" onClick={acknowledge}>Record client acknowledgement</button>}</div>}
     {intent && <div className="form-card" role="status"><h3>Submission {intent.state === "pending" || intent.state === "sending" ? "pending" : intent.state}</h3><p>{intent.message || "The exact content is saved on this device. Server submission and PDF creation await synchronization."}</p>{intent.validationErrors?.map((error, i) => <p key={i}>{error.message}</p>)}{w.signatures.filter(s => s.logId === log.id && s.state === "failed").map(s => <p key={s.id}>Signature upload: {s.message}</p>)}
@@ -126,7 +127,7 @@ function ClientOutput({ log, w }) {
   async function send(existing = null) {
     let request = existing;
     if (!request) {
-      request = { requestId: crypto.randomUUID(), logId: log.id, userId: log.owner.userId, revision: Number(revision), recipient: recipient.trim(), resendOf: previous?.request_id || null, confirmPossibleDuplicate: confirm };
+      request = { requestId: randomId(), logId: log.id, userId: log.owner.userId, revision: Number(revision), recipient: recipient.trim(), resendOf: previous?.request_id || null, confirmPossibleDuplicate: confirm };
       await putWorkflowRecord("deliveries", request); setPendingSend(request);
     }
     const { requestId, recipient: requestRecipient, resendOf, confirmPossibleDuplicate } = request;
@@ -140,7 +141,7 @@ function ClientOutput({ log, w }) {
     await refresh();
   }
   const document = output?.revisions.find(r => r.revision === Number(revision)), url = `/api/v1/daily-logs/${log.id}/revisions/${revision}/pdf`;
-  return <div className="form-card form-fields"><h3>Draft PDF and client email</h3><p className="helper-text">DRAFT - Awaiting Supervisor Approval. Email is sent only when you select Send.</p>
+  return <div className="form-card form-fields"><h3>Draft PDF and client email</h3><p className="helper-text">{log.status === 'approved' ? 'Approval is recorded. The attached document is the retained submitted draft PDF.' : 'DRAFT - Awaiting Supervisor Approval.'} Email is sent only when you select Send.</p>
     {!w.online && <p>Reconnect to preview PDFs or send email.</p>}
     {!output && w.online && <p>Loading document status…</p>}
     {output && <><label>Document revision<select value={revision} onChange={e => { setRevision(Number(e.target.value)); setConfirm(false); }}>{output.revisions.map(r => <option key={r.revision} value={r.revision}>Revision {r.revision} · {r.state || "No client PDF"}</option>)}</select></label>

@@ -1,3 +1,4 @@
+import { randomId } from "../domain/crypto.js";
 const DB_NAME = "substrata-jobs";
 import { assertSubmittable } from "../domain/dailyLog.js";
 import { canonical, contentHash, submissionContent, retentionEligible, serverSnapshot } from "../domain/submission.js";
@@ -74,7 +75,7 @@ export async function saveDailyLog(log, baseRevision = log.serverRevision || 0, 
   if ((await getWorkflowRecords("submissions")).some(i => i.logId === log.id && i.state !== "completed")) throw new Error("Submission is pending. Resolve it before editing this record.");
   const occurredAt = new Date().toISOString();
   const mutation = {
-    mutationId: crypto.randomUUID(),
+    mutationId: randomId(),
     entityType: "daily_log",
     entityId: log.id,
     operation: "upsert",
@@ -281,7 +282,7 @@ export async function resolveLocalConflict(log, serverLog, choice) {
       transaction.objectStore(META_STORE).put(intent, `submission-history:${intent.requestId}`);
       transaction.objectStore("submissions").delete(log.id);
     }
-    transaction.objectStore(META_STORE).put({ local: log, server: serverLog, choice, resolvedAt: new Date().toISOString() }, `conflict:${log.id}:${crypto.randomUUID()}`);
+    transaction.objectStore(META_STORE).put({ local: log, server: serverLog, choice, resolvedAt: new Date().toISOString() }, `conflict:${log.id}:${randomId()}`);
     transaction.objectStore(DAILY_LOG_STORE).put(resolved);
     const store = transaction.objectStore(MUTATION_STORE);
     const request = store.index("byEntity").getAll(["daily_log", log.id]);
@@ -314,7 +315,7 @@ export async function queueSubmission(logId, userId) {
   const log = await getDailyLog(logId);
   if (!log || log.owner.userId !== userId || !["draft", "returned", "reopened"].includes(log.status)) throw new Error("Only your editable record can be submitted.");
   assertSubmittable(log);
-  const intent = { logId, userId, requestId: crypto.randomUUID(), snapshot: log, contentHash: await contentHash(submissionContent(log)), state: "pending", createdAt: new Date().toISOString() };
+  const intent = { logId, userId, requestId: randomId(), snapshot: log, contentHash: await contentHash(submissionContent(log)), state: "pending", createdAt: new Date().toISOString() };
   await transact([DAILY_LOG_STORE, "submissions"], "readwrite", tx => {
     const saved = tx.objectStore(DAILY_LOG_STORE).get(logId);
     saved.onsuccess = () => {

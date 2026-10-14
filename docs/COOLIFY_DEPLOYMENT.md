@@ -14,6 +14,12 @@ Walk through pre-start, drilling work entries with times/descriptions, starting/
 
 For phone offline/PWA acceptance, use a valid HTTPS origin. The currently documented LAN address `http://substrata-jobs.mcm` is suitable for the connected UI walkthrough but is not a secure context for service-worker acceptance. Disconnect/reload/reconnect and confirm synchronization when testing on HTTPS.
 
+## HTTP LAN UUID/hash compatibility
+
+The reported `crypto.randomUUID is not a function` failure on **Start daily record** is caused by directly using a secure-context browser API on an HTTP origin. `localhost` browser tests did not expose it. `src/domain/crypto.js` now supplies UUID v4 generation using native `randomUUID` where available, otherwise cryptographic `getRandomValues`, and SHA-256 using Web Crypto where available, otherwise pinned `@noble/hashes`. All browser record/device/mutation/submission IDs use this helper. UUID format, canonical content hashes and stored records remain compatible; no new database migration or environment variable is needed. Deploy the source and package-lock change together through the Dockerfile build.
+
+`test/e2e/http-browser.spec.js` uses a non-localhost HTTP hostname mapped to the local fixture container. It checks that the origin is non-secure and the native UUID/SubtleCrypto APIs are absent, then exercises bore record creation, quantity entry, shift finish, sync and submission. HTTP support here does not enable service workers or installation/offline reload on an insecure origin; HTTPS remains required for those browser capabilities. After redeploying, reload the Jobs page to load the rebuilt bundle; do not clear storage containing unsynced work.
+
 ## Resource configuration
 
 Deploy Substrata Jobs as a separate Dockerfile application in the same Coolify production environment as Ops Manager.

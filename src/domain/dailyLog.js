@@ -1,3 +1,4 @@
+import { randomId } from "./crypto.js";
 import { acknowledgementErrors } from "./submission.js";
 import { boreDetailErrors, boreReadingErrors } from "./boreDetails.js";
 const CONTRACT_VERSION = "1.0";
@@ -65,7 +66,7 @@ function ownerRef(user) {
 
 function crewFromAssignment(personnel, startedAt) {
   return personnel.map((person) => ({
-    id: crypto.randomUUID(),
+    id: randomId(),
     userId: person.userId ?? null,
     employeeCodeSnapshot: person.employeeCode ?? null,
     displayNameSnapshot: person.displayName,
@@ -77,7 +78,7 @@ function crewFromAssignment(personnel, startedAt) {
 
 function pointFromReference(reference, startedAt, sequence = 1, startDepthM = null) {
   return {
-    id: crypto.randomUUID(),
+    id: randomId(),
     sequence,
     jobNumber: reference.jobNumber,
     pointId: reference.pointId,
@@ -111,7 +112,7 @@ export function createDailyLog({ assignment = null, owner, shiftLabel = "day", s
 
   return {
     contractVersion: CONTRACT_VERSION,
-    id: crypto.randomUUID(),
+    id: randomId(),
     logType: isAncillary ? "ancillary" : "rig_shift",
     division: isAncillary ? null : job.division,
     assignmentId: assignment?.assignmentId ?? null,
@@ -128,7 +129,7 @@ export function createDailyLog({ assignment = null, owner, shiftLabel = "day", s
     crew: crewFromAssignment(crew, start),
     points: point ? [point] : [],
     activities: [{
-      id: crypto.randomUUID(),
+      id: randomId(),
       sequence: 1,
       pointSegmentId: point?.id ?? null,
       activityCode: initialActivity.code,
@@ -155,7 +156,7 @@ export function startNextActivity(source, { code, label, allocation, notes = nul
   after(at, active.startedAt, "ACTIVITY_DURATION_INVALID", "The next activity must start after the current activity.", "activities");
   active.endedAt = at;
   log.activities.push({
-    id: crypto.randomUUID(),
+    id: randomId(),
     sequence: log.activities.length + 1,
     pointSegmentId: currentPoint(log)?.id ?? null,
     activityCode: code,
@@ -191,7 +192,7 @@ export function changePoint(source, { nextPoint, endDepthM, endStatus, nextStart
   const activity = currentActivity(log);
   after(at, activity.startedAt, "ACTIVITY_DURATION_INVALID", "Change point after the current activity starts.", "activities");
   activity.endedAt = at;
-  log.activities.push({ ...activity, id: crypto.randomUUID(), sequence: log.activities.length + 1,
+  log.activities.push({ ...activity, id: randomId(), sequence: log.activities.length + 1,
     pointSegmentId: nextPoint ? log.points.at(-1).id : null, startedAt: at, endedAt: null });
   return touch(log, at);
 }

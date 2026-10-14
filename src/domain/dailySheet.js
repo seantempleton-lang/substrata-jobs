@@ -1,3 +1,4 @@
+import { randomId } from "./crypto.js";
 import { sheetPointTextFields, sheetPointNumberFields } from "./boreDetails.js";
 import { editDailyLog } from "./dailyLog.js";
 
@@ -37,7 +38,7 @@ export function setSheetQuantity(source, preset, pointSegmentId, value, catalogu
     const quantity = Number(value);
     if (!Number.isFinite(quantity) || quantity < 0) throw new Error("Enter a non-negative quantity or leave it blank.");
     const matching = catalogue.find(item => item.active && item.label.toLowerCase() === preset[1].toLowerCase() && item.unit === preset[2] && (!item.division || item.division === "Shared" || item.division === log.division));
-    const next = { id: existing?.id || crypto.randomUUID(), itemType: existing?.itemType || matching?.itemType || preset[3] || "material", itemCode: existing?.itemCode || matching?.code || "OTHER",
+    const next = { id: existing?.id || randomId(), itemType: existing?.itemType || matching?.itemType || preset[3] || "material", itemCode: existing?.itemCode || matching?.code || "OTHER",
       itemLabelSnapshot: preset[1], pointSegmentId: pointSegmentId || null, quantity, unit: existing?.unit || preset[2], notes: existing?.notes || null };
     if (existing) Object.assign(existing, next); else log.items.push(next);
   });

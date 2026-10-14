@@ -12,6 +12,7 @@ import { getFieldPoints, createHandoff, consumeHandoff, serviceAuthorized } from
 import { submitLog, uploadSignature, readSignature, readOutput, generateDocument, downloadDocument, signatureKey } from "./submissions.mjs";
 import { emailCapability, sendClientEmail } from "./email.mjs";
 import { getClientContacts } from "./repository.mjs";
+import { assignmentWindow } from './calendar.mjs';
 
 const app = express();
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,13 +86,11 @@ app.delete("/api/v1/session", requireAuth, async (req, res) => {
 
 app.get("/api/v1/bootstrap", requireAuth, async (req, res) => {
   try {
-    const today = new Date();
-    const defaultFrom = today.toISOString().slice(0, 10);
-    const defaultToDate = new Date(today.getTime() + 13 * 86_400_000);
+    const window = assignmentWindow();
     const payload = await getBootstrap({
       user: req.auth.user,
-      from: req.query.from || defaultFrom,
-      to: req.query.to || defaultToDate.toISOString().slice(0, 10),
+      from: req.query.from || window.from,
+      to: req.query.to || window.to,
       myAssignmentsOnly: req.query.myAssignmentsOnly !== "false",
     });
     res.json(payload);
