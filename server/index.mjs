@@ -8,7 +8,8 @@ import { clearSessionCookie, login, logout, requireAuth, setSessionCookie } from
 import { closePool, query } from "./db.mjs";
 import { getBootstrap, recordSyncProbe } from "./repository.mjs";
 import { applySyncBatch, listDailyLogs, readDailyLog } from "./dailyLogs.mjs";
-import { getFieldPoints, createHandoff, consumeHandoff, serviceAuthorized } from "./field.mjs";
+import { createHandoff, consumeHandoff, serviceAuthorized } from "./field.mjs";
+import { getCoreGsPoints, coreGsCapability, closeCoreGsPool } from "./coregs.mjs";
 import { submitLog, uploadSignature, readSignature, readOutput, generateDocument, downloadDocument, signatureKey } from "./submissions.mjs";
 import { emailCapability, sendClientEmail } from "./email.mjs";
 import { getClientContacts } from "./repository.mjs";
@@ -53,7 +54,7 @@ app.get("/api/v1/health", async (_req, res) => {
     const ok = Object.values(checks).every((value) => value === "ok");
     let signatures = "configured";
     try { signatureKey(); } catch { signatures = "unconfigured"; }
-    return res.status(ok ? 200 : 503).json({ ok, checks, capabilities: { email: emailCapability(), signatures } });
+    return res.status(ok ? 200 : 503).json({ ok, checks, capabilities: { points: coreGsCapability(), email: emailCapability(), signatures } });
   } catch (error) {
     checks.database = "error";
     return res.status(503).json({ ok: false, checks, message: error.message });
@@ -120,7 +121,7 @@ app.post("/api/v1/sync", requireAuth, async (req, res) => {
 app.get("/api/v1/points", requireAuth, async (req, res) => {
   try {
     if (!req.query.jobNumber) return res.status(400).json({ error: { message: "Job number is required." } });
-    res.json({ points: await getFieldPoints(req.query.jobNumber) });
+    res.json({ points: await getCoreGsPoints(req.query.jobNumber) });
   } catch (error) { apiError(res, error); }
 });
 app.get("/api/v1/daily-logs", requireAuth, async (req, res) => {
@@ -189,7 +190,7 @@ export { app, server };
 
 function shutdown() {
   server.close(async () => {
-    await closePool();
+    await Promise.allSettled([closePool(), closeCoreGsPool()]);
     process.exit(0);
   });
 }

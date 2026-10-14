@@ -29,7 +29,13 @@ services:
       RUN_MIGRATIONS: "true"
       SESSION_DURATION_DAYS: 1
       COOKIE_SECURE: "false"
-      FIELD_API_URL: http://host.docker.internal:18081
+      CORE_GS_ENABLED: "true"
+      CORE_GS_HOST: fixture-coregs
+      CORE_GS_DATABASE: fixture-db
+      CORE_GS_USER: fixture-user
+      CORE_GS_PASSWORD: fixture-password
+      CORE_GS_CLNT_ID: Geotechnical
+      NODE_OPTIONS: --import=/app/test/fixtures/register-coregs.js
       FIELD_BASE_URL: http://localhost:18081
       FIELD_JOBS_KEY: local-jobs-field-key
       SIGNATURE_ENCRYPTION_KEY: bG9jYWwtdGVzdC1zaWduYXR1cmUta2V5LTAwMDAwMDA=
@@ -40,6 +46,8 @@ services:
       EMAIL_ALLOW_LOCAL_CAPTURE: "true"
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
+    volumes:
+      - ./test/fixtures:/app/test/fixtures:ro
     ports:
       - "127.0.0.1:18080:8080"
 

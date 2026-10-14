@@ -123,9 +123,30 @@ Do not expose PostgreSQL publicly solely for this application.
 
 ## First-deployment verification
 
+### CORE-GS point selection
+
+Point lookup now uses Jobs' own server-side CORE-GS helper, adapted from Field's `getCoreGsPool` / `getCoreGsPoints` in `server.js`. It does not call the Field application. Copy the **working runtime settings** from Field into the Jobs Coolify resource, enable them, and redeploy Jobs:
+
+```dotenv
+CORE_GS_ENABLED=true
+CORE_GS_HOST=<same SQL Server host used by Field>
+CORE_GS_DATABASE=<same CORE-GS database used by Field>
+CORE_GS_USER=<SQL login with read access to dbo.POINT>
+CORE_GS_PASSWORD=<runtime secret>
+CORE_GS_CLNT_ID=<same CLNT_ID used by Field; default Geotechnical>
+```
+
+Also copy `CORE_GS_PORT`, `CORE_GS_INSTANCE`, `CORE_GS_ENCRYPT` and `CORE_GS_TRUST_SERVER_CERTIFICATE` when set in Field. Jobs uses Field's boolean defaults when omitted. Preserve the actual working port/instance/certificate choices; do not substitute old sample hostnames or the historical test database. These settings are runtime-only, never `VITE_*` or build-time variables. The Jobs container must be able to reach the SQL Server from its own network. Jobs issues SELECT only, bound to the configured `CLNT_ID` and the Ops job number as `PROJ_ID`, and retains Field's `Sort, POINT_ID` ordering. It does not create/edit CORE-GS points, copy Field's auth/cache tables or require a new PostgreSQL migration.
+
+`/api/v1/health` reports `capabilities.points` with source/enabled/configured, without credentials. `configured` reports setting presence, not verified SQL connectivity. After signing in, open `/api/v1/points?jobNumber=302670` (or the intended Ops job number), then confirm starting-point selection and **Refresh points**. A source failure returns a visible error; saved point lists remain available. A successful empty list means no points for that configured client/project. The Field service key and Field API URL are not used for point lookup.
+
+Local Compose uses a test-only Node loader and SQL-driver fixture mounted from `test/fixtures`; neither the fixture files nor its `NODE_OPTIONS` setting belong in the Coolify production configuration. The production Dockerfile installs the real `mssql` dependency. Local browser/API tests run without a Field HTTP fixture and cannot prove live SQL Server reachability or login permissions.
+
+### Optional Field technical-module handoff
+
 Step 4 requires migration `003_field_workflow.sql`, which adds the aggregate snapshot, Custom shift label and single-use Field handoff storage. Deploy the companion Field changes (`jobs-integration.js`, server routing, Dockerfile and context-aware UI) as well.
 
-Configure Jobs with `FIELD_API_URL` (private Field service address), `FIELD_BASE_URL` (public Field URL), and `FIELD_JOBS_KEY`. Configure Field with `JOBS_API_URL` (private Jobs address) and the identical `FIELD_JOBS_KEY`. Keep the key server-side. Jobs authenticates point reads through Field's `/api/jobs/points`; Field continues to choose CORE-GS or its own configured backing store. Jobs does not write Field's points or connect directly to CORE-GS.
+To open technical modules or create a missing point in Field, configure Jobs with `FIELD_BASE_URL` (Field browser URL) and `FIELD_JOBS_KEY`. Configure Field with `JOBS_API_URL` (private Jobs address) and the identical `FIELD_JOBS_KEY`. Keep the key server-side. These settings are independent of the read-only CORE-GS point helper; `FIELD_API_URL` is no longer used by Jobs.
 
 Handoffs require the employee code in Field's authenticated account to match the Ops account. Field's separate identity store still authorizes its own operations; the opaque token supplies context only. Empty point context is allowed for the project/point-creation workflow. Jobs constructs the return URL from `APP_BASE_URL`, ignoring client-supplied authority.
 

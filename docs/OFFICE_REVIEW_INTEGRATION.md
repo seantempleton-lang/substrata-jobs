@@ -1,0 +1,11 @@
+# Ops review integration: approve/return slice
+
+Implemented locally on 14 October 2026 alongside the Ops Manager Daily Logs inbox. Any Supervisor, Administrator or SuperUser may review any log, including their own; self-review is explicitly audited. Office review writes live in the Ops API. Jobs owns submission, immutable revisions, signatures, actual work and device synchronization.
+
+Ops migration 016 adds its review idempotency/history table. It requires a shared database with Jobs submission migration 004 already installed. This Jobs checkout also contains separate daily-sheet/bore-detail work requiring migration 005; review that existing work together when preparing a release. The complete contract, grant requirements, validation and staging steps are in the Ops repository's `docs/OFFICE_REVIEW_IMPLEMENTATION.md`.
+
+Jobs changes support returned comments and approved state, server-owned office decision metadata, returned-log corrections/resubmission, protected offline mutations and review updates for older records after a dormant device reconnects. PostgreSQL DATE values and the default assignment window preserve New Zealand calendar days. Approval locks editing and does not send email. Existing PDFs remain submitted draft artifacts; final PDFs, material supervisor corrections/confirmation and reopening are later review slices.
+
+Deploy the compatible Jobs update/migrations before enabling the Ops review update against staging. Verify submit → return with comment → owner correction/resubmission → approve → Jobs sync/lock. Check field-role denial, duplicate/stale review actions, explicit self-review, preservation of old signed revisions and offline recovery. No deployed grants, live records or email recipients were changed during implementation.
+
+Local checks passed: Jobs lint, 33 unit/domain/IndexedDB tests, contract examples and PWA build; Ops build, seven unit tests and sixteen integration test results. A browser acceptance run exercised the full return/resubmit/approve cycle across both apps on a disposable shared database. Test-only submitted snapshots remain immutable; discard the disposable database/container after integration tests. The unit suite regenerates its local PDF fixtures.

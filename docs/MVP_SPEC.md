@@ -403,7 +403,8 @@ Recommended implementation shape:
 - IndexedDB: offline assignments, catalogues, drafts, signatures, and pending sync queue
 - Server-side PDF service: immutable revision PDFs
 - Server-side email service: company service mailbox delivery
-- Substrata Field API: technical-module and CORE-GS bridge
+- Jobs server-side CORE-GS helper: read-only point selection by configured client and Ops job number
+- Substrata Field API: technical-module and point-creation handoff
 
 Field context handoff contains the authenticated user, job number, point ID, daily-log UUID, and return destination. It should use same-origin routing or a short-lived server-issued handoff token, not database credentials or editable query-string authority.
 

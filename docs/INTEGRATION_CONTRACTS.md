@@ -28,6 +28,7 @@ Jobs PWA
   -> Jobs API
       -> Ops-owned PostgreSQL tables (read operational master data)
       -> jobs_app tables (read/write daily-log data)
+      -> CORE-GS SQL Server (read-only point references, scoped by client/project)
       -> Field API (short-lived handoff only)
 ```
 
@@ -48,7 +49,7 @@ The PWA must never receive database credentials or connect directly to PostgreSQ
 | Actual crew attendance | Jobs | Read/write | attendance UUID plus `app_users.id` |
 | Daily activities and allocations | Jobs | Read/write | client-generated UUID |
 | Client acknowledgements and PDFs | Jobs | Read/write | UUID plus log revision |
-| Points and technical records | Field / CORE-GS | Read through Field API | `PROJ_ID + POINT_ID` |
+| Point references | CORE-GS | Read through Jobs' server-side CORE-GS helper | configured `CLNT_ID + PROJ_ID + POINT_ID` |
 | Geology, testing, installation, backfill and photos | Field / CORE-GS | Context handoff only | Field-defined natural keys |
 
 Jobs may snapshot display values such as job title, client name, employee name, rig code, and point label so historical PDFs remain intelligible. A snapshot does not transfer ownership.
@@ -88,6 +89,8 @@ Jobs does not create an independent point UUID. A point is referenced by:
 ```
 
 This maps to CORE-GS `PROJ_ID + POINT_ID`. Point creation or editing remains a Field operation.
+
+Jobs now duplicates Field's read-only CORE-GS connection/point helper in `server/coregs.mjs`. Both assignment bootstrap and authenticated `GET /api/v1/points?jobNumber=...` query `dbo.POINT`, using typed `CLNT_ID` and `PROJ_ID` parameters and Field's sort order. `CORE_GS_*` settings remain server-only. There is no Field HTTP or Field-cache fallback for point reads. Failed reads keep `pointFeedAvailable=false`; the device retains previously cached point references. Field launch/create-point handoffs remain separate and optional. No CORE-GS master data is written by Jobs.
 
 ### 4.4 People and crew
 

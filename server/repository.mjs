@@ -1,5 +1,5 @@
 import { query } from "./db.mjs";
-import { getFieldPoints } from "./field.mjs";
+import { getCoreGsPoints } from "./coregs.mjs";
 
 // Read only the contacts for this log's Ops-owned job. Probe availability and
 // grants first: missing integration does not disable submission or PDF output.
@@ -134,7 +134,7 @@ export async function getBootstrap({ user, from, to, myAssignmentsOnly }) {
     };
   }).filter((assignment) => !myAssignmentsOnly || assignment.isMine);
   const jobNumbers = [...new Set(assignments.filter(a => a.job).map(a => a.job.jobNumber))];
-  const pointResults = await Promise.allSettled(jobNumbers.map(number => getFieldPoints(number)));
+  const pointResults = await Promise.allSettled(jobNumbers.map(number => getCoreGsPoints(number)));
   for (const assignment of assignments) {
     const index = jobNumbers.indexOf(assignment.job?.jobNumber);
     if (index >= 0) {
