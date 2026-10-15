@@ -1,6 +1,7 @@
 import { randomId } from "./crypto.js";
 import { acknowledgementErrors } from "./submission.js";
 import { boreDetailErrors, boreReadingErrors } from "./boreDetails.js";
+import { itemErrors } from "./reviewWork.js";
 const CONTRACT_VERSION = "1.0";
 const TIMEZONE = "Pacific/Auckland";
 
@@ -305,8 +306,7 @@ export function draftErrors(log) {
     if (Date.parse(point.startedAt) < start || (point.endedAt && (Date.parse(point.endedAt) <= Date.parse(point.startedAt) || Date.parse(point.endedAt) > finish)))
       add("POINT_TIME_INVALID", "Point work must fit within the shift.", "points");
   }
-  for (const item of log.items) if (!Number.isFinite(item.quantity) || item.quantity < 0 || !item.unit?.trim() || !item.itemLabelSnapshot?.trim())
-    add("ITEM_INVALID", "Items require a description, unit and non-negative quantity.", "items");
+  for (const item of log.items) errors.push(...itemErrors(item));
   return errors;
 }
 

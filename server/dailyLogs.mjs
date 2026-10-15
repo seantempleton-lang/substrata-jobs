@@ -227,7 +227,7 @@ async function applyMutation({ mutation, batchId, deviceId, user }) {
     if (log.status !== (existing.rows[0]?.status || 'draft')) throw problem('WORKFLOW_STATE_FORBIDDEN', 'Review states can only be changed by the office workflow.', 'status');
     // Office decisions are server-owned, even when a field device sends an old
     // or modified copy during returned-log synchronization.
-    for (const field of ['officeReview', 'approvedAt', 'submittedAt', 'requiresDrillerAction']) {
+    for (const field of ['officeReview', 'officeCorrection', 'approvedAt', 'submittedAt', 'requiresDrillerAction']) {
       delete log[field];
       if (existing.rows[0]?.aggregate?.[field] !== undefined) log[field] = existing.rows[0].aggregate[field];
     }

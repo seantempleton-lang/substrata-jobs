@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { applyWorkCorrections } from '../src/domain/reviewWork.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "contracts", "v1");
 
@@ -90,6 +91,20 @@ for (const file of ["daily-log-geotech.json", "daily-log-water.json", "daily-log
   validateSchema("daily-log.schema.json", log, file);
   validateTimeline(log);
 }
+
+const original = await readJson('examples/daily-log-water.json');
+const { log: corrected, changes } = applyWorkCorrections(original, { notes: 'Supervisor-checked daily notes.' });
+corrected.status = 'approved'; corrected.currentDocumentRevision = 2;
+corrected.officeReview = { action: 'correct_and_lock', comment: 'Checked against field record.', reviewerId: original.owner.userId,
+  reviewerName: original.owner.displayName, reviewedAt: original.shift.endedAt, documentRevision: 2, selfReview: true };
+corrected.officeCorrection = { sourceDocumentRevision: 1, documentRevision: 2, reviewerId: original.owner.userId,
+  reviewerName: original.owner.displayName, correctedAt: original.shift.endedAt, reason: 'Checked against field record.', changes };
+if (corrected.clientAcknowledgement.status === 'signed_on_device') corrected.clientAcknowledgement = {
+  status: 'not_signed', reasonCode: 'CONTENT_CHANGED', reasonNotes: 'Earlier signature retained.', clientEmail: null,
+  priorSignatureUploadId: corrected.clientAcknowledgement.signatureUploadId,
+};
+validateSchema('daily-log.schema.json', corrected, 'supervisor-corrected locked aggregate');
+validateTimeline(corrected);
 
 for (const file of ["submission-request.json", "send-client-email-request.json", "signature-upload-request.json"]) validateSchema("submission.schema.json", await readJson(`examples/${file}`), file);
 

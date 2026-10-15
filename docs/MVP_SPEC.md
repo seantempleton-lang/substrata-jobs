@@ -1,17 +1,17 @@
 # Substrata Jobs MVP Product Specification
 
-Status: Draft baseline - implementation in progress  
-Last updated: 14 October 2026  
+Status: MVP target specification - implementation and acceptance in progress\
+Last updated: 15 October 2026\
 Product scope: Water and Geotech
-Current delivery stage: Daily bore input UI refinement against the example log sheet; Step 5 foundations retained
+Current delivery stage: Jobs submission → Ops at-a-glance review/edit → project lock-in for invoicing; client deliverables optional
 
-The current user priority is a simple daily bore input screen centred on the paper daily log's fields and work table. Rig records open the combined Daily log screen before review/sign-off. The entry experience must be reviewed with the user before further rollout, email configuration or Step 6 work. Existing offline saving, stable point references, immutable submitted revisions and synchronization remain requirements.
+Priority corrected on 15 October: Jobs must capture the right information for Ops, where a supervisor can review at a glance, edit and lock it into the project for invoicing. The supervisor may lock directly after edits; returning to the driller for correction/confirmation is optional. Develop and validate Jobs and Ops together. Client-facing PDFs, signatures and email are nice-to-have follow-up features and do not gate the internal pilot. Preserve offline saving, stable point references, original submissions and attributable corrections. Sections 1-23 describe the target; section 24 records implementation. See [../PROJECT_DEVELOPMENT.md](../PROJECT_DEVELOPMENT.md) for the current sequence.
 
 ## 1. Purpose
 
 Substrata Jobs is a device-agnostic, offline-first web application for field teams to record daily drilling and ancillary work.
 
-It replaces the current paper daily log while creating structured records that can later feed invoicing, client reporting, payroll, compliance, and other Substrata systems.
+It replaces the paper daily log with structured actual work submitted to Ops for supervisor review, correction and project lock-in for invoice preparation. Later capabilities include client reporting, payroll export and other integrations. Locking reviewed work does not itself create an invoice, determine rates or mean that work has been billed.
 
 The primary field record is a daily work segment for one job, one rig, one primary driller, and one entered shift period. A record may contain multiple boreholes or test points.
 
@@ -69,7 +69,7 @@ The mobile application must never connect directly to Postgres or CORE-GS.
 - Selects points and records point progress
 - Captures quantities, measurements, and client acknowledgement
 - Submits and resubmits the record
-- Confirms or rejects material supervisor corrections
+- Responds when the supervisor chooses to return a record for correction or confirmation
 
 Authority is established through the authenticated user account. Crew signatures are not required.
 
@@ -256,18 +256,22 @@ Synchronization state is independent of workflow state and includes Local, Pendi
 
 - Submission runs all completeness and timeline validations.
 - Submission creates an immutable revision.
-- A draft client PDF is generated for that revision.
+- Structured work is available for supervisor review in Ops independently of client output.
+- The current implementation also generates a draft PDF for rig submissions; this is an existing optional-output behaviour, not the acceptance target.
 - The PDF is not emailed automatically.
 
 ### Supervisor review
 
-- Approval locks the current revision.
+- Review shows the job/rig/shift/crew, activity totals, bore progress, quantities/units, services/subcontractors, comments and exceptions at a glance, with details available.
+- The supervisor can edit and lock the reviewed revision directly to the project for invoice preparation.
+- Lock-in records the exact reviewed version, project, reviewer and timestamp. The project exposes its agreed totals with links to source records.
+- Current `approved` locks the log; the project invoicing view and supervisor editing still need implementation. Reuse or extend that transition after defining the contract rather than silently equating it with an invoiced state.
 - Return sends the record to the driller with required comments.
 - Driller corrections create a new revision before resubmission.
 
 ### Supervisor corrections
 
-Material changes require driller confirmation:
+Supervisors may correct the following and lock directly; driller confirmation is not mandatory:
 
 - Shift or activity time
 - Quantity or unit
@@ -276,14 +280,22 @@ Material changes require driller confirmation:
 - Payroll job or ancillary coding
 - Description of work performed
 
-Administrative changes do not require driller confirmation:
+Administrative corrections also remain attributable:
 
 - Spelling
 - Formatting
 - Report presentation
 - Internal supervisor notes
 
-All corrections are audit-logged. Signatures cannot be edited by supervisors.
+The supervisor may instead return a record for correction or confirmation with a clear comment. A requested driller action remains visible until resolved or explicitly withdrawn through an audited supervisor decision. All corrections preserve the submitted original and before/after values with actor/time/reason. Signatures cannot be edited or silently applied to changed content.
+
+### Project lock-in and invoicing basis
+
+- Expose locked daily work under the correct Ops project, with agreed activity/quantity totals and source revision links.
+- Keep recorded actuals distinct from any supervisor chargeable classification. Agree the required units/grouping and billing treatment rather than inventing rates or invoice lines.
+- Only the effective locked version contributes to invoice-preparation totals; draft, returned, superseded and awaiting-action work must not be silently included.
+- Controlled corrections/reopening preserve prior versions and must not double-count replaced work. Define handling of already-used invoice inputs before implementing that boundary.
+- Invoice creation, pricing and accounting integration are separate scope from reviewing and locking daily work.
 
 ### Reopening approved records
 
@@ -291,7 +303,9 @@ All corrections are audit-logged. Signatures cannot be edited by supervisors.
 - A reason is mandatory.
 - Reopening creates a new revision and preserves the approved version.
 
-## 13. PDF and client email
+## 13. Optional follow-up: PDF and client email
+
+Existing signature/PDF/email implementations are preserved. Their refinement, final-PDF generation, mailbox/contact setup and production delivery acceptance are deferred from the core operational pilot. The requirements below apply when those optional features are used; they must not block submission, supervisor review/editing or project lock-in.
 
 ### Draft PDF
 
@@ -379,20 +393,22 @@ Approved and successfully synchronized records may be removed from the device af
 8. Points and depth progress
 9. Materials, services, subcontractors, and measurements
 10. Launch technical Field module
-11. Client acknowledgement
+11. Optional client acknowledgement (secondary)
 12. Validation, review, and submission
-13. Draft PDF preview and deliberate email send
+13. Optional draft PDF preview and deliberate email send (secondary)
 14. My records, returned items, and sync status
 
 ### Ops Manager
 
 1. Submitted-log review inbox
-2. Log and revision detail
-3. Return, correct, or approve actions
-4. Driller-confirmation status
+2. At-a-glance work summary with log/revision detail
+3. Edit and lock into the project, or optionally return for correction/confirmation
+4. Optional requested-driller-action status
 5. Approved-log reopen action
-6. PDF and email history
+6. Project locked-work view and agreed totals for invoice preparation
 7. Activity and materials catalogue administration
+
+PDF/email history remains optional secondary functionality.
 
 ## 18. Integration architecture
 
@@ -442,25 +458,27 @@ Field context handoff contains the authenticated user, job number, point ID, dai
 - Materials, services, subcontractors, and measurements
 - Future payroll allocation fields
 
-### Stage 4 - Submission and client output
+### Stage 4 - Reliable structured submission
 
 - Validation
-- Drawn signature
 - Immutable revision generation
-- Draft PDF and deliberate email send
+- Reliable availability in the Ops review inbox
+- Existing client signature/PDF/email retained as optional follow-up
 
 ### Stage 5 - Office workflow
 
 - Ops Manager review inbox
-- Return, material correction, driller confirmation, and approval
+- At-a-glance review, supervisor editing and direct lock-in
+- Optional return for driller correction/confirmation
+- Project-linked reviewed figures for invoice preparation
 - Reopen workflow and audit history
-- Final PDF
+- Final client PDF deferred to optional follow-up
 
 ### Stage 6 - System integration
 
 - Field context handoff
 - CORE-GS SiteRecords, Activities, and Consumables mapping
-- Payroll, invoicing, reporting, and compliance outputs
+- Later invoice creation/accounting integration, payroll export, reporting and compliance outputs
 - Remote client signing in a later phase
 
 ## 21. MVP acceptance criteria
@@ -473,24 +491,26 @@ The MVP is ready for pilot when:
 - Job and ancillary time is structurally ready for per-person payroll calculation.
 - A leading hand can complete a group ancillary day without a job or rig.
 - A handover creates a new log and carries forward point context without copying prior work records.
-- A client can sign on the device or the driller can record why no signature was obtained.
-- Submission creates a draft PDF that excludes internal payroll and review data.
-- No client email is sent without a deliberate action.
-- A supervisor can approve, return, correct, or reopen a log with the agreed confirmation rules.
+- Submitted work is available as structured information for at-a-glance Ops review without requiring a PDF, signature or email setup.
+- A supervisor can edit and lock directly or optionally return work for correction/confirmation, with original and corrected versions attributable.
+- The correct effective locked revision appears under the project with the agreed invoice-preparation figures; replaced versions are not double-counted.
+- Controlled correction/reopening preserves the prior locked version and changes are synchronized back to Jobs.
 - Offline retries do not duplicate records.
 - Records remain locally available for the retention window and unsynced work is never purged.
 
+Client signatures, draft/final PDF acceptance and client delivery are optional follow-up checks. When used, client output excludes internal-only data and email always requires a deliberate Send action.
+
 ## 22. Remaining configuration work
 
-The product structure is agreed. Implementation still requires operational configuration rather than further architecture decisions:
+The operational loop is the agreed priority. Information/aggregation rules for project invoice preparation and the supervisor edit/lock contract still need definition. Core configuration includes:
 
 - Water and Geotech material/service catalogues
 - Ancillary payroll-code list
 - Activity-category list
 - Point status and bore-size lookups
-- Client-facing PDF branding and wording
-- Company service mailbox and sending provider
 - Pilot users, rigs, and jobs
+
+Optional client-output configuration is deferred: client-facing PDF branding/wording, service mailbox/provider, client contact defaults and signature-key recovery when signatures are used.
 
 ## 23. MVP delivery plan
 
@@ -507,8 +527,7 @@ Build a device-agnostic, mobile-first PWA prototype using realistic mocked assig
 - multiple points, point changes, depths, statuses, and handover context
 - whole-crew attendance with join and leave times
 - site data, materials, services, measurements, and notes
-- optional client acknowledgement, drawn signature, absence reason, and email
-- submission validation, draft PDF status, and deliberate client-send action
+- submission validation and reliable structured delivery to Ops
 - offline and sync status states visible throughout the workflow
 
 The prototype will include at least these walkthrough scenarios:
@@ -540,17 +559,17 @@ Implement rig and ancillary record creation, shift controls, activity continuity
 1. **Field workflow complete:** both primary prototype scenarios can be completed offline, survive app closure or refresh, and resume without data loss.
 2. **Integration complete:** the resulting daily logs synchronize idempotently and are visible as structured records in the office system.
 
-### Step 5 - Submission and client output
+### Step 5 - Reliable submission (existing client output optional)
 
-Add validation, drawn signature, signature-unavailable reasons, immutable submitted revisions, server-rendered draft PDFs, deliberate email delivery, local retention, and delivery history.
+Validate and capture immutable submitted revisions, durable offline intentions, reliable Ops visibility and safe local retention. Existing client acknowledgement/signature, PDF and delivery functions are preserved as optional features; further output work is deferred.
 
-**Exit criterion:** a submitted log produces an auditable PDF and is never emailed without an explicit user action.
+**Exit criterion:** the exact submitted work arrives once in Ops with correct project/crew/bore attribution and units, without requiring client deliverables.
 
 ### Step 6 - Office review workflow
 
-Implement the Ops Manager review inbox, return-for-correction flow, supervisor material corrections, driller confirmation, approval, reopen controls, final PDFs, and complete audit history.
+Implement at-a-glance Ops review, supervisor correction/direct lock-in, optional return for driller correction/confirmation, project-linked reviewed figures for invoice preparation, controlled reopening and attributable revision history. Changes may alternate between Jobs and Ops. Final client PDFs are optional follow-up.
 
-**Exit criterion:** a log can complete the full driller-client-supervisor lifecycle with every material change attributable and confirmed under the agreed rules.
+**Exit criterion:** the supervisor can quickly review, correct and lock a traceable version to the project for invoice preparation; Jobs reflects the result and project totals include only the effective locked work.
 
 ### Step 7 - Pilot hardening and rollout
 
@@ -576,9 +595,9 @@ The field screens now use authenticated Ops assignments and persisted daily-log 
 
 The initial clickable mobile-first prototype covered Geotech, Water, and ancillary-only work. Step 4 has replaced its mocked state with live assignments and locally persisted daily logs while retaining the screen design.
 
-### Step 2 - Proposed contract pack complete
+### Step 2 - Contract pack established as the implementation baseline
 
-The proposed v1 integration contract is documented in `docs/INTEGRATION_CONTRACTS.md` and `contracts/v1`.
+The additive v1 integration contract is documented in `docs/INTEGRATION_CONTRACTS.md` and `contracts/v1`. It includes implemented entry/submission contracts and planned lifecycle states; a schema state alone does not establish that its full workflow is implemented.
 
 The contract pack contains:
 
@@ -636,24 +655,34 @@ The Step 4 UI and integrations now include:
 - real Local, Pending, Synced, Failed and Conflict indicators, retry controls and deliberate conflict reconciliation preserving both versions
 - immutable in-flight mutation payloads, safe retry after a lost acknowledgement, and serialized concurrent server creates/retries
 - continuation into a new log carrying point/setup context without copying earlier work entries
-- authenticated Field point reads and five-minute single-use context handoffs, with companion receiver/context changes in the Field repository
+- direct server-side CORE-GS point reads scoped by client/project, and five-minute single-use Field context handoffs with companion receiver/context changes in the Field repository
 - structured log reads and a supervisor-only office view; sync audit snapshots include device/time and assignment/crew deviations
 - browser and real-Postgres coverage for the Geotech multi-point, group ancillary and Water workflows
 
-On 14 October 2026, the user reported deploying and testing Jobs and Field successfully. Jobs reports no planned assignments. Live Ops inspection showed an empty current planner, historical May-June assignments, and zero active assignments for every listed employee. Ops planner date edits are currently local UI state without assignment write APIs. Completing Ops planner persistence and crew assignment is being handled separately; it does not prevent Step 5 development using the local fixtures.
+On 14 October 2026, the user reported Jobs/Field deployed and working, while the inspected live Ops planner had no current plans. Read-only inspection of Ops source at `af45f0a` on 15 October confirms planner persistence and structured crew assignments are now implemented. Their deployed state and current plans were not checked; verify those rather than treating the older source gap as current.
 
-The deployment report does not independently establish every Step 4 acceptance check. Planned-assignment acceptance awaits current saved Ops assignments; personal-device offline/restart acceptance and the full structured-office-record checkpoint should remain explicit checks if not already exercised by the user. Preserve the existing offline and synchronization baseline while implementing Step 5.
+Current saved Ops assignments, personal-device offline/restart and structured office visibility remain environment checks. The combined Daily log screen adds paper-based bore details, work descriptions/times, readings and quantity shortcuts with migration 005. The next product checkpoint pairs its realistic phone walkthrough with the supervisor's Ops summary and invoice-preparation needs.
 
 ### Step 5 - Implemented locally: configuration and staging acceptance pending
 
-Implement the scope in section 23 and the concrete handoff in `../PROJECT_DEVELOPMENT.md`: submission validation, optional on-device acknowledgement, durable signature upload, immutable submitted revisions, server-rendered draft PDFs, deliberate email delivery, delivery history, and safe local-retention rules.
+The section 23 scope is implemented locally: submission validation, optional on-device acknowledgement, durable encrypted signature upload, immutable submitted revisions, server-rendered draft PDFs, deliberate email delivery/history and safe local-retention rules. See `../PROJECT_DEVELOPMENT.md` for current acceptance gates and implementation locations.
 
-Development is independent of the separate Ops planner work. Step 5 now implements server-authoritative submission, immutable snapshots, durable encrypted signatures, draft PDFs, explicit client delivery/history and protected local retention. Supervisor approval/corrections, reopen controls, final PDFs and the Ops review inbox remain Step 6.
+Submission and existing PDF generation are server-authoritative and revision-linked. Offline submission preserves the exact intended content until acknowledged. Ancillary records submit internally without client controls. Reliable structured submission remains core; client output is optional follow-up. The first approve/return slice exists; supervisor editing/direct lock-in and project invoice-preparation views are next.
 
-Email provider/mailbox, client-facing branding/wording and missing Ops contact access need operational decisions during Step 5. These should not block implementation of submission/revision/PDF foundations. Document unconfigured delivery honestly and never simulate successful production email.
+Production email authorisation, client-facing wording and Ops contact access/selection still need configuration and acceptance. Unconfigured delivery does not prevent submission or draft PDF generation. Local test capture establishes provider acceptance and attachment content rather than production delivery or actual receipt.
 
-The user selected the proposed Microsoft 365 mailbox `substrata-jobs@drilling.co.nz` and authorised a reviewable branding/wording draft. Mailbox/Entra access, signature key/backup and Ops contact grants/selection remain production configuration gaps. Jobs offers the client's contact dropdown and editable recipient, but the current Ops jobs schema lacks its supervisor-selected contact field. Local Mailpit tests establish capture and the correct PDF attachment, not Microsoft 365 authorisation or real recipient receipt. See `docs/COOLIFY_DEPLOYMENT.md` and the Step 5 update in `PROJECT_DEVELOPMENT.md`.
+The proposed Microsoft 365 mailbox `substrata-jobs@drilling.co.nz`, draft wording and client-scoped contact dropdown remain available for later client-output work. Mailbox/Entra access, signature key/recovery and contact default/access acceptance are deferred; they do not gate the internal pilot. Local Mailpit tests establish capture and attachment content rather than production receipt. See `docs/COOLIFY_DEPLOYMENT.md` and the optional follow-up in `PROJECT_DEVELOPMENT.md`.
 
-### Verification baseline - 14 October 2026
+### Step 6 - First approve/return slice implemented locally; remaining lifecycle outstanding
 
-The previously recorded local verification suite passed lint, 17 domain/server/IndexedDB tests, contract validation, the production PWA/container build, seven browser/real-Postgres tests and two Field receiver tests. Coverage includes full browser-process restart offline, unfinished editor recovery, lost-response/concurrent duplicate retries, office access and handoff consumption. Field's context-aware UI also passed a browser smoke check with mocked authenticated context. The user subsequently reported successful Jobs/Field deployment and testing. The precise field-device and assignment/office acceptance checks remain as described above; local fixtures do not establish those results. This documentation update did not rerun the application test suite.
+The companion Ops API/inbox supports approve and return decisions, with review idempotency/history in Ops migration 016. Jobs supports returned comments, owner correction/resubmission, approved state/locking and review reconciliation after dormant-device reconnects. Office metadata remains server-owned and old submitted/signed snapshots remain immutable. Jobs' own office screen is still read-only. See [OFFICE_REVIEW_INTEGRATION.md](OFFICE_REVIEW_INTEGRATION.md).
+
+The previous disposable shared-database run exercised submit, return/comment, owner correction/resubmission, approval and Jobs locking. Source inspection on 15 October confirms those actions but no supervisor content editing or project invoicing view. Next: at-a-glance summaries, authorised supervisor corrections/direct lock-in, optional return for correction/confirmation, controlled reopening and effective locked project figures. The earlier mandatory material-change confirmation rule is superseded by the user's 15 October decision. Existing PDFs remain drafts; final client PDFs are optional follow-up.
+
+### Step 7 - Pilot and rollout acceptance outstanding
+
+Pilot the internal Jobs → Ops review/edit/lock → project invoice-preparation loop after paired usability and connected-workflow acceptance. Cover Water/Geotech and ancillary work on Android/iOS, weak/no coverage, handover, payroll boundaries, retries/conflicts, effective-version project totals and recovery. Client output is not a pilot prerequisite. The target remains two payroll fortnights without lost records or unresolved critical workflow defects before wider rollout approval.
+
+### Verification baseline - 15 October 2026
+
+Fresh repository inspection at `7c50c70` passed all 38 unit/domain/IndexedDB tests, lint, contract validation and the production/PWA build. Docker Desktop's Linux engine was unavailable, so browser/Postgres tests and the Docker build were not rerun. The latest recorded 14 October CORE-GS validation passed 16 browser/API tests and Docker/PWA build; separate office integration exercised a disposable shared database. These do not establish the new supervisor edit/lock/project features or production readiness. Core environment acceptance includes Ops assignments, shared-schema permissions, CORE-GS and personal-phone HTTPS offline/restart. Signature/email/contact acceptance is optional follow-up. The priority correction changed documentation, not runtime behaviour.

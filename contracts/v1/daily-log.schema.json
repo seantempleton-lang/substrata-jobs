@@ -32,13 +32,29 @@
       "type": "object", "additionalProperties": false,
       "required": ["action", "comment", "reviewerId", "reviewerName", "reviewedAt", "documentRevision", "selfReview"],
       "properties": {
-        "action": { "enum": ["approve", "return"] },
+        "action": { "enum": ["approve", "return", "correct_and_lock"] },
         "comment": { "type": ["string", "null"], "maxLength": 4000 },
         "reviewerId": { "$ref": "common.schema.json#/$defs/uuid" },
         "reviewerName": { "type": "string" },
         "reviewedAt": { "$ref": "common.schema.json#/$defs/instant" },
         "documentRevision": { "type": "integer", "minimum": 1 },
         "selfReview": { "type": "boolean" }
+      }
+    },
+    "officeCorrection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sourceDocumentRevision", "documentRevision", "reviewerId", "reviewerName", "correctedAt", "reason", "changes"],
+      "properties": {
+        "sourceDocumentRevision": { "type": "integer", "minimum": 1 },
+        "documentRevision": { "type": "integer", "minimum": 1 },
+        "reviewerId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "reviewerName": { "type": "string" },
+        "correctedAt": { "$ref": "common.schema.json#/$defs/instant" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "changes": { "type": "array", "minItems": 1, "items": {
+          "type": "object", "additionalProperties": false, "required": ["path", "before", "after"],
+          "properties": { "path": { "type": "string" }, "before": { "type": ["string", "number", "null"] }, "after": { "type": ["string", "number", "null"] } }
+        } }
       }
     },
     "carriedFromLogId": { "oneOf": [{ "$ref": "common.schema.json#/$defs/uuid" }, { "type": "null" }] },

@@ -1,162 +1,133 @@
-# Substrata Jobs development handoff
+# Substrata Jobs development plan and handoff
 
-Last updated: 14 October 2026  
-Next step: Daily bore input UI walkthrough against the paper daily log; rollout/configuration follows user acceptance
-Status: Step 5 implemented locally; production mailbox/contact configuration and rollout remain outstanding
+Last updated: 15 October 2026\
+Next checkpoint: User-managed compatible Coolify release and feedback on Jobs submission → Ops correction/lock → project matrix → Jobs synchronization\
+Status: Core entry/submission, approve/return and coordinated bounded Ops correction/direct lock/project matrix implemented locally; broader editing and requisition rules remain next; client output is optional follow-up
 
-## Current priority - daily bore input screen
+## 15 October coordinated implementation result
 
-The user corrected the point-source architecture: Jobs must duplicate Field's CORE-GS helper rather than query the Field app for point selection. `server/coregs.mjs` now uses the same server-side MSSQL connection settings and parameterized `dbo.POINT` query, scoped to `CLNT_ID` and Ops `jobNumber = PROJ_ID`. Bootstrap, point refresh and handoff point validation use it. Configure the working Field `CORE_GS_*` variables in the Jobs Coolify runtime; no new migration is required. Field remains the optional technical-module/point-creation destination using `FIELD_BASE_URL` / `FIELD_JOBS_KEY`; `FIELD_API_URL` is not used for lookup. Existing point contracts, draft identities and offline caches are preserved. Local Compose substitutes a SQL driver through test-only `NODE_OPTIONS` and fixture mounts; never copy that loader setting to production. Field's source and the schema workbook were inspected read-only; no live CORE-GS request or write was made during this change.
+Ops and Jobs were inspected together before code changes; existing uncommitted documentation was preserved. Ops now summarizes work, corrects existing item quantities/units/descriptions/notes and daily notes with an attributable immutable version, and locks directly. Its project Daily work tab collates current locked item contributions, keeps same-day logs separate and opens exact source entries/revisions. Broader attendance/time/bore/allocation editing and requisition finalisation remain outside this increment.
 
-CORE-GS helper validation: 38 unit tests, all 16 browser/API tests, lint, contract validation and Docker/PWA build passed. The production `mssql` driver imported successfully under the container's Node runtime with the test loader disabled. Jobs pins `mssql` 12.7.6 with its fixed transitive driver; runtime audit reports zero findings. Live SQL network/login/permission compatibility must be checked after configuring Jobs. The new browser test verifies source scoping and preserving selected points on refresh failure; the suite no longer starts the Field HTTP fixture.
+Jobs shares `src/domain/reviewWork.js` with Ops (integration-enforced parity), uses its strict item validation, preserves server-owned `officeCorrection`, and displays reviewer/reason/before/after values after reconciliation. Migration **006_log_item_quantity_precision.sql** removes child-row rounding to three decimal places to match the existing numeric aggregate contract; existing historic values are not rewritten. Ops requires **017_daily_log_corrections.sql** alongside Jobs through 006. Earlier signatures/PDFs stay on earlier work; no new client output is required for a correction.
 
-The user reported `crypto.randomUUID is not a function` when clicking **Start daily record**. This was reproduced on a real non-secure HTTP test origin; localhost was masking the missing API. The compatibility patch adds shared `src/domain/crypto.js`, uses cryptographic UUID v4 fallback for all browser IDs, and keeps SHA-256 content hashes identical through pinned `@noble/hashes` when SubtleCrypto is absent. No database/environment change is required. Include the new helper and package/lockfile changes in the rebuild/redeploy. HTTP browser coverage is in `test/e2e/http-browser.spec.js`; HTTPS remains required for service-worker/offline app installation.
+Fresh local checks passed: lint, **40 tests**, contract examples including a corrected locked aggregate and PWA build. The companion Ops build, 10 unit tests, 17 database integration results and additional actual-app browser scenario passed on a disposable shared PostgreSQL database after Docker was restored. It verifies original preservation, two-bore quantities, correction precision, role/stale/retry protection, project reconciliation and Jobs receiving the locked correction. No deployment, live records or emails were changed. See [OFFICE_REVIEW_INTEGRATION.md](docs/OFFICE_REVIEW_INTEGRATION.md).
 
-The user redirected the work to focus on highly user-friendly daily bore data entry, using their `Daily Log Example.pdf` as the reference. Further email/approval work is secondary to getting the daily input experience right. The PDF's printed guidance is reference material, not authority to impose new mandatory fields or send data anywhere. Preserve the Step 5 foundations and existing offline/idempotent sync while refining the UI.
+Continue with wider shared domain/editor coverage and representative Water/Geotech/ancillary field walkthroughs. Agree measurement/commercial mappings, controlled reopen/replacement and requisition selection/freeze/reuse before implementing those boundaries. The older baseline/sequence below remains context where not superseded by this result.
 
-Rig logs now open a Daily log screen with prefilled client/job/location/plant/date; bore selection and consultant/permit/purpose/bore size/depth inputs; a Start/Finish/Work Details table with direct description editing; AM/PM SWL with paired bore depths; meter serial/start/finish with L or m³ units; common materials, tests/services, subcontractor use, crew and comments. Section shortcuts keep the work table and readings accessible. Extra item/allocation/technical functions remain available under secondary controls. Ancillary screens remain unchanged. Submit/sign-off follows data entry.
+## Product vision and system boundaries
 
-`src/components/DailySheet.jsx` and `src/domain/dailySheet.js` implement the screen and quantity shortcuts. Additive `points[].dailyDetails` is validated in `src/domain/boreDetails.js` and persisted to the aggregate and `log_points.daily_details` by migration `005_daily_bore_details.sql` after 004. These are daily-record snapshots/observations; point creation and technical modules remain in Field. No Ops/Field schema or live data was changed. Existing catalogue matches are reused where possible; otherwise quick quantities use the existing Other item mechanism, without inventing catalogue/pricing authority. Blank/unrecorded remains distinct from explicit zero/Not used. Partial readings autosave; incomplete or impossible readings are flagged at review/submission.
+### Deployment and testing preference, confirmed 15 October
 
-Local browser coverage in `test/e2e/daily-sheet.spec.js` exercises the source-sheet inputs, offline reload, two-bore separation, and real Postgres sync. Screenshots are produced for phone and desktop review. User walkthrough of a representative real daily log is the next product checkpoint; do not jump back to rollout/approval features before reviewing this entry experience. No deployment is authorised.
+The deployment target is **Coolify on the work server**. Default to local builds and focused tests without containers, then user testing and feedback through the remote apps. Continue independent implementation while feedback is pending. Local Docker is optional for a specific unresolved migration/database/transaction/integration question; explain its purpose before starting it. Do not routinely recreate a local deployment or make Docker a prerequisite to progress. The last disposable database/browser run verified the new shared correction workflow and was removed afterward.
 
-Validation for this refinement: 29 unit tests, lint, contract examples and the production/PWA container build passed. All 13 existing browser/API regression tests passed; the daily-sheet browser test passed again after the final dialog-refresh and section-navigation refinements. Reviewed previews are saved under `output/ui/daily-log-{mobile,work,desktop}.png`. Test data and email captures used only the isolated local Compose fixtures.
+For the next user-managed release, make compatible source available on the configured Coolify branches, verify Jobs through migration **006** and Ops through **017** plus shared-database grants, deploy Jobs before enabling the new Ops workflow, then gather walkthrough feedback. No commit/push/deployment is implied by local implementation. See [Coolify deployment](docs/COOLIFY_DEPLOYMENT.md#next-user-managed-review-release-and-feedback) and the companion Ops `docs/COOLIFY_REVIEW_HANDOFF.md` for concrete steps. This documentation update performs no deployment or live writes.
 
-## Objective for the new thread
+Capture the right daily work information in Jobs, submit it reliably to Ops, and let the supervisor review it at a glance, correct it where necessary and lock the reviewed work into the project for invoicing. Develop Jobs and Ops together around that complete workflow.
 
-Implement Step 5 from [docs/MVP_SPEC.md](docs/MVP_SPEC.md), preserving the existing field layout, offline persistence, shared Ops authority, and idempotent synchronization. A completed daily log must become an immutable submitted revision, produce an auditable draft PDF for a rig shift, and support client delivery only after a deliberate Send action. Ancillary records submit internally and do not show client acknowledgement, signature or client-PDF functions.
+Confirmed on 15 October: the supervisor may edit and lock directly, without mandatory driller confirmation. Sending the record back to the driller for correction or confirmation remains an option. All corrections and lock decisions must be attributable, with the original submission preserved.
 
-Read the MVP spec, this document, [docs/INTEGRATION_CONTRACTS.md](docs/INTEGRATION_CONTRACTS.md), `contracts/v1`, and the current implementation before changing code. Operational choices requiring user input are listed below. Continue independent foundations while those choices are pending.
+Client-facing daily-log PDFs, signatures and email are nice-to-have follow-up features. Preserve existing implementations; their configuration and refinement do not gate operational review, project lock-in or pilot acceptance.
 
-## Current position and separate Ops work
+- Ops Manager owns accounts, clients/contacts, jobs, equipment, people, plans and office review decisions.
+- Jobs owns actual daily work, attendance, activities, bore progress/readings, quantities, offline drafts, signatures, immutable submissions, PDFs and delivery history.
+- CORE-GS owns authoritative project/point references. Jobs reads points directly through its server-side helper, scoped by `CLNT_ID` and Ops `jobNumber = PROJ_ID`.
+- Field remains the point-creation and technical-module destination. Jobs keeps references and daily observations rather than taking over geology, SPT, core, installations or photos.
 
-Step 4 implements live assignments, rig/ancillary logs, continuous activities, multiple points, crew attendance, quantities, notes, shift completion, continuation/handover, offline recovery, synchronization and a supervisor-only read-only office view. The user has deployed and tested Jobs and Field and reports that both work as expected.
+Project-linked locked work is the immediate input needed for invoicing. Invoice creation, rates/pricing, accounting export and payroll automation are separate capabilities; locking a daily record must not imply that it has been invoiced. The detailed target behaviour is in [docs/MVP_SPEC.md](docs/MVP_SPEC.md); implemented contracts are in [docs/INTEGRATION_CONTRACTS.md](docs/INTEGRATION_CONTRACTS.md) and `contracts/v1`.
 
-Jobs currently has no planned assignments because live Ops shows no current plans: navigating back shows historical May-June schedules, and Personnel reports zero active assignments. Repository inspection also found Ops date edits only change local component state, with no planner assignment write APIs. Ops planner persistence and stable crew assignment are a separate task, documented in that repository's `PROJECT_DEVELOPMENT.md`. Do not fold that work into Jobs or manufacture production assignments. Use the Jobs local fixture database to develop and test Step 5.
+## Current implementation
 
-The user's deployment report does not prove every acceptance scenario. Retain checks for current Ops assignment visibility, personal-phone offline/restart behaviour and structured office records. Existing local regression coverage is the baseline, not a substitute for those environment checks.
+| Area | Implemented here | Remaining checkpoint or work |
+| --- | --- | --- |
+| Foundation and Step 4 | Shared Ops login and assignments; rig/ancillary logs; activities; multiple bores; attendance; quantities; continuation/handover; IndexedDB autosave; offline recovery; idempotent sync and explicit conflict resolution | Current saved Ops assignments, personal-device offline/restart and office visibility need environment acceptance |
+| Daily bore input | Combined Daily log screen with prefilled context, bore details, editable Start/Finish/Work Details table, SWL/depth pairs, meter readings/units, quantities, crew and comments | Paired Jobs/Ops walkthrough to agree operational/invoicing information and refine entry |
+| Step 5 submission/output | Reliable submission, immutable revisions and retention; existing signatures, draft PDFs and deliberate delivery/history | Structured submission is core; client-output refinement and mailbox/contact setup are optional follow-up |
+| First Step 6 review slice | Jobs handles returned comments, owner corrections/resubmission, approved state/locking, server-owned decision metadata and review updates after dormant-device reconnects | Companion Ops review API/inbox and migration 016 must be verified together; Jobs' own office screen remains read-only |
+| Current Step 6 increment | Ops work summaries, bounded existing-item/daily-note correction and direct lock; project matrix with effective locked contributions; Jobs correction display/synchronization and preserved item precision | Remote user acceptance; wider times/crew/bore/allocation editors and item additions/removals; agreed commercial/measurement mapping, controlled reopen and requisition boundaries |
+| Step 7 | Automated local regression coverage and deployment guidance | Mixed Water/Geotech phone pilot, support procedures and rollout acceptance |
 
-Actual deployed LAN URLs:
+The office workflow is described in [docs/OFFICE_REVIEW_INTEGRATION.md](docs/OFFICE_REVIEW_INTEGRATION.md). The earlier read-only Ops inspection at `af45f0a` is a historical approve/return-only baseline, superseded by the implementation above. The current `approved` state locks reviewed work and feeds the operational project matrix; it does not create a requisition or invoice. Deployed acceptance remains unverified. Existing PDFs remain drafts; finalisation is optional follow-up.
 
-| App | URL |
+## Immediate checkpoint: paired Jobs and Ops walkthrough
+
+The user corrected the priority on 15 October: accurate information and quick supervisor review/edit/lock-in for project invoicing take precedence over client deliverables. Use `Daily Log Example.pdf` as a reference and evaluate inputs against what the crew records and the supervisor needs to review. Field entry and office review form one iterative workstream; neither waits for PDF/email acceptance.
+
+Walk through one representative full shift:
+
+1. Select a real-looking job, rig, shift and crew; choose the starting bore.
+2. Record pre-start and drilling activities with times/descriptions, depths, AM/PM SWL, meter readings, quantities/tests and comments.
+3. Change to a second bore; verify the first bore's observations and quantities remain separate. Correct an earlier entry and change crew attendance.
+4. Close/reopen a saved draft. On a secure test origin, also disconnect, restart and reconnect to verify recovery and synchronization.
+5. Finish and submit without client acknowledgement. In Ops, identify job/rig/crew, activity totals, bore progress, quantities/units, subcontractor work, comments and exceptions without opening a PDF.
+6. Walk a supervisor correction and direct lock-in, plus optional return for correction/confirmation. Identify which reviewed figures must appear under the project for invoice preparation.
+
+Record unclear labels, missing information, unnecessary taps and unsuitable units in both apps. Exit criterion: the crew can submit a realistic shift, and a supervisor can quickly understand it, correct it and lock a traceable version to the correct project for invoice preparation.
+
+Daily details are additive `points[].dailyDetails`, validated in `src/domain/boreDetails.js` and stored by migration `005_daily_bore_details.sql`. These are daily observations. Blank/unrecorded remains distinct from explicit zero/Not used; partial readings autosave and invalid/incomplete pairs are flagged at review. Existing catalogue matches are reused; unmatched quick quantities use Other without inventing catalogue/pricing authority. Ancillary screens remain separate and omit client signature/PDF controls.
+
+## Sequence from here
+
+1. **Agree the required information and review layout.** Walk a shift across Jobs and Ops. Establish useful activity/quantity totals, exceptions and project allocation. Distinguish recorded actuals from chargeable decisions; do not invent rates or billing rules.
+2. **Refine both apps together.** Adjust Jobs inputs/validation and Ops summary/detail views. Preserve bore/job/crew attribution, explicit units and reliable offline submission. Client acknowledgement and PDF/email must not obstruct the core flow.
+3. **Extend correction and lock-in.** Build on the implemented item/note editor and direct lock with shared constraints/editors for times, attendance, bore/progress/allocation and item additions/removals. Retain optional return, immutable before/after attribution, exact-version checks and recoverable offline conflicts.
+4. **Refine project collation and define the requisition boundary.** Validate the existing effective-locked operational matrix from user feedback. Agree commercial/measurement mapping, controlled changes/reopening and requisition selection/freeze/reuse before implementing them. Locking is distinct from invoice creation or proof of billing.
+5. **Verify and pilot the internal loop.** Use local builds/focused tests and the user's Coolify walkthrough by default. Verify shared migrations/grants, current plans, CORE-GS and phone HTTPS offline/restart in the target environment. Use optional Docker only for a specific unresolved database/integration question, explaining its purpose. The current disposable workflow has already passed. Pilot mixed Water/Geotech and ancillary work against the two-payroll-fortnight reliability target.
+6. **Optional follow-up: client deliverables.** Revisit signatures, PDF presentation/finalisation, mailbox/contact configuration and deliberate sending after the internal workflow is accepted.
+
+Jobs and Ops changes may alternate within each increment; verify their shared contract together. Preserve existing output functions while reviewing their prominence/dependencies in the core UI. This plan does not establish deployment approval or authorise live data changes/client email.
+
+## Configuration and cross-repository dependencies
+
+- **CORE-GS:** Copy the working Field `CORE_GS_*` runtime settings into Jobs and verify network/login/read permissions from the Jobs container. `FIELD_API_URL` is not used for point lookup. `FIELD_BASE_URL` / `FIELD_JOBS_KEY` support optional technical/create-point handoffs. No new migration is needed for the direct reader.
+- **Ops assignments:** The 15 October source inspection confirms planner persistence and structured crew assignment are implemented, superseding the earlier source gap. Verify deployed migrations/current saved plans; no live assignments were checked or changed.
+- **Review:** The current correction/matrix increment requires Ops migrations through **017** and Jobs through **006**, including 004 submission and 005 bore details. Follow the companion Ops `docs/OFFICE_REVIEW_IMPLEMENTATION.md` for the additional runtime grants and verify actual applied state in Coolify.
+- **Email:** Proposed mailbox `substrata-jobs@drilling.co.nz` and best-effort branding/wording were selected previously. Mailbox provisioning, Entra application/consent, restricted mailbox authorisation and runtime credentials remain unverified. Local Mailpit has no real relay.
+- **Contacts:** Jobs has a client-scoped dropdown and editable recipient. The previously inspected Ops schema had client contacts but no persisted supervisor-selected job contact. Confirm its current schema, selection rule and restricted SELECT access before enabling a default.
+- **Signatures/storage:** Configure and back up the persistent encryption key; retain old keys for recovery/rotation. PDFs/signatures use private PostgreSQL storage. See [docs/COOLIFY_DEPLOYMENT.md](docs/COOLIFY_DEPLOYMENT.md) for configuration, grants and retry semantics.
+
+Last recorded LAN URLs are Jobs `http://substrata-jobs.mcm`, Ops `http://substrata.ops.mcm`, and Field `http://substrata.field.mcm`. These were not rechecked on 15 October. HTTP LAN supports a connected UI walkthrough; real-device PWA installation/service-worker/offline acceptance requires a secure origin.
+
+## Implementation map and invariants
+
+| Source | Responsibility |
 | --- | --- |
-| Jobs | http://substrata-jobs.mcm |
-| Ops | http://substrata.ops.mcm |
-| Field | http://substrata.field.mcm |
+| `src/components/DailySheet.jsx`, `src/domain/dailySheet.js`, `src/domain/boreDetails.js` | Combined bore entry, quantities and daily detail validation |
+| `src/App.jsx`, `src/components/LogForms.jsx`, `src/components/SubmissionReview.jsx` | Field navigation, editors, review, acknowledgement, output and deliberate Send |
+| `src/domain/dailyLog.js`, `src/domain/submission.js` | Aggregate constraints, completeness, signed-content identity and retention eligibility |
+| `src/foundation/offlineStore.js`, `syncManager.js`, `reviewUpdates.js`, `useWorkspace.js` | Atomic local persistence/outbox, frozen intentions/signatures, retry/conflict handling and office-state reconciliation |
+| `server/dailyLogs.mjs`, `submissions.mjs`, `output.mjs`, `email.mjs` | Authenticated persistence, authoritative submission, immutable revisions, private output and delivery |
+| `server/coregs.mjs`, `repository.mjs`, `field.mjs`, `auth.mjs` | Point reads, Ops master-data reads, Field handoff and identity/access |
+| `db/001_jobs_foundation.sql` through `005_daily_bore_details.sql` | Versioned Jobs migrations; actual applied state must be checked per environment |
+| `contracts/v1`, `test`, `compose.local.yaml` | Additive v1 contracts and isolated unit/browser/Postgres fixtures |
 
-The HTTPS addresses in older deployment examples are not the current LAN configuration. Installation/service-worker acceptance on real devices requires a secure context; do not imply HTTP LAN testing proves offline PWA behaviour. Preserve existing runtime secrets and shared database/service configuration; no credentials are recorded here.
+Keep permanent log/assignment UUIDs and `job_number = PROJ_ID`. Document revision and synchronization `serverRevision` are distinct. Freeze the exact content signed/submitted; retries must not duplicate revisions or deliveries. Preserve old signatures after material edits and never silently carry them onto changed content. Unsigned submission is valid. Submitted/approved records cannot be overwritten through draft sync. Office decisions remain server-owned. Protect unsynced, failed, conflicted, returned and action-required work from retention cleanup; only eligible approved/synchronized records leave the device after the 14-day window, while server records remain.
 
-## Implementation map and gaps
+## Verification and outstanding acceptance
 
-| Source | Relevant baseline |
-| --- | --- |
-| `src/App.jsx`, `src/components/LogForms.jsx` | Editable field screens and completed-shift review. The review still describes an editable draft; no real Submit, acknowledgement, PDF or Send workflow. |
-| `src/domain/dailyLog.js` | `validationErrors`, `assertSubmittable`, draft constraints and aggregate editing. Reuse and extend rather than duplicating validation. |
-| `src/foundation/offlineStore.js`, `syncManager.js`, `useWorkspace.js` | IndexedDB, atomic autosave/outbox, recovery, immutable sent mutations and conflict handling. Extend carefully for signatures and submission intentions. |
-| `server/dailyLogs.mjs` | Authenticated aggregate persistence, ownership checks and draft sync. Editable statuses are draft/returned/reopened; mutation operation currently supports upsert only. Submission needs an explicit server-authoritative transition. |
-| `server/index.mjs`, `repository.mjs`, `auth.mjs` | Same-origin API, shared Ops identity, roles, assignment/catalogue reads and restricted access. Extend existing error/authority patterns. |
-| `db/001_jobs_foundation.sql` through `003_field_workflow.sql` | Applied implementation migrations. Revision/acknowledgement fields exist but there are no completed immutable document/PDF/email workflows. Recheck the next migration number before adding files. |
-| `contracts/v1/daily-log.schema.json`, `sync.schema.json`, `database-model.sql` | Contract scaffolding. The model SQL is a design reference, not an instruction to replay it on the database. Current acknowledgement schema does not express every MVP outcome (for example Will sign later); align schemas, examples and implementations. |
-| `test`, `test/fixtures`, `compose.local.yaml` | Unit/IndexedDB/server tests, Playwright/real-Postgres tests, isolated Ops fixtures and a test Field server. Extend this baseline. |
+Latest local results on **15 October 2026**: **40 unit/domain/IndexedDB tests**, lint, contracts including a corrected locked aggregate and PWA build passed. Ops passed its build, 10 unit tests, 17 shared-database integration results and the additional actual-app browser scenario. The disposable resources were removed and generated build/PDF changes were restored; existing documentation and implementation work remains in the working trees. These results do not establish a commit, push or deployed revision.
 
-Jobs owns document revisions, actual attendance, signatures, output and delivery records. Ops owns people/jobs/plans and later supervisor review. Field owns points. Keep `job_number = PROJ_ID` and permanent log/assignment UUIDs. A document revision and the aggregate's synchronization `serverRevision` are distinct concepts; do not conflate them.
+The earlier inspection of clean `master` at `7c50c70` passed 38 tests while Docker was unavailable. The last full standalone Jobs browser/API suite and Docker build report 16 tests passing on 14 October. Those are historical baselines, distinct from the newer shared Ops/Jobs workflow above. The next acceptance step is the user's Coolify walkthrough, not a required repeat local deployment.
 
-## Work sequence
-
-### 1. Submission and immutable revisions
-
-- Add a usable readiness/review screen with actionable completeness and timeline errors for rig and ancillary logs.
-- Define an explicit idempotent submission operation: validate ownership, workflow state, latest aggregate version and completeness on the server, then atomically capture the exact submitted snapshot and workflow transition.
-- Offline Submit must durably save a pending submission intention and its content locally. Show that server submission/PDF creation is pending until acknowledged. Synchronize required draft data and signature uploads before finalizing the transition; handle interruption and lost responses without duplicate revisions.
-- Preserve prior snapshots. Block later draft upserts from mutating a submitted revision, and ensure conflicts cannot silently swap the contents being signed or submitted.
-- Preserve the draft-synchronization protections already implemented, including immutable in-flight payloads and deliberate conflict resolution.
-
-### 2. Optional client acknowledgement and signatures
-
-- Support Signed on device, Not available, Declined, Not required, Will sign later, and Other with a note. Absence of a client signature must never block submission.
-- Capture representative name, optional company/role, signature time and optional email; support drawing/clearing on touch and pointer devices.
-- Persist signature content on the device before upload and retain it across closure/offline use. Add authenticated, restricted uploads/downloads and validated content/size limits. Do not expose signature assets through public URLs.
-- Bind acknowledgement to the exact immutable content/revision it covers. If content changes after signing, preserve the earlier acknowledgement and clearly indicate it does not cover the changed content; never carry a signature forward silently.
-- Update contracts/migrations for missing fields/outcomes with compatibility for existing drafts. Ancillary UI omits all client/signature functions.
-
-### 3. Draft PDFs
-
-- Render rig-shift PDFs server-side from immutable submitted snapshots, with `DRAFT - Awaiting Supervisor Approval` clearly visible.
-- Include job/site/rig/shift/crew, point progress, activity descriptions/timeline, relevant quantities/services/measurements, comments and acknowledgement status.
-- Exclude payroll/ancillary allocation codes, internal supervisor notes, audit history and integration/sync metadata.
-- Provide authorised preview/download and durable revision-linked output. Show genuine pending/failed states and safe generation retries; submission durability must not depend on an email provider being available.
-- Record document revision, artifact identity/checksum and generation state so a document can be traced to the submitted data. Use durable storage appropriate to Coolify; container-local ephemeral files alone are insufficient.
-- Render and inspect representative multipage outputs, including long descriptions, missing signature and Water/Geotech differences.
-
-### 4. Deliberate email and delivery history
-
-- Add editable recipient selection, optionally defaulting from authoritative Ops contact data if available. Verify schema and restricted DB-role read permissions before introducing a new contact query.
-- Send only in response to the user's explicit Send action for a chosen PDF revision. Submission, PDF generation and later approval must never implicitly email.
-- Record recipient, authenticated sender, document revision, request/provider IDs, timestamps and genuine queued/sent/failed/unknown delivery states. Distinguish provider acceptance from actual receipt if receipt evidence is unavailable.
-- Prevent duplicate sends on request replay; define how intentional resend differs from retry. Handle ambiguous provider timeouts without blindly sending another copy.
-- Keep provider credentials server-side in Coolify runtime variables. Use a local email capture/test provider for automated verification; no real client email should be sent during development.
-
-### 5. Retention and deployment documentation
-
-- Implement/test the spec's 14-day local-retention policy with explicit eligibility and deletion time semantics. Never purge unsynced/failed/conflicted records, signature uploads or submitted intentions awaiting completion, returned records, or records awaiting driller action.
-- Purge only safely eligible approved/synchronized local records after the retention window, preserving server data. Step 6 supplies approval; do not treat Submitted as Approved just to exercise cleanup. Use approved fixtures for retention tests.
-- Add new immutable migrations and any Jobs-role grants for revision/signature/document/delivery storage. Preserve Ops-owned data and existing log UUIDs.
-- Document provider/storage variables, durable storage, migration order and health/error behaviour in the Coolify guide. Separate application readiness from unconfigured email capability.
-
-## Decisions to obtain during implementation
-
-- Company sending provider and service mailbox (including authorised From/reply-to identity).
-- Approved client-facing branding/template and wording; reuse existing Substrata assets as a reviewable starting point.
-- Authoritative Ops client contact source and selection rule, if multiple contacts exist. Continue with an editable explicit recipient until integration is defined.
-- Any desired storage/provider conventions already in use on the server. Choose reviewable local defaults for independent work; do not configure live services or guess credentials.
-
-These are configuration/product inputs, not a reason to stop revision, acknowledgement and PDF groundwork. If production email is unconfigured at completion, report that limitation and provide a tested local delivery path; do not claim the whole delivery step is operational.
-
-## Acceptance checks
-
-- [ ] A valid rig log submits once, captures an immutable revision and generates a real draft PDF.
-- [ ] Incomplete/invalid logs are rejected on the server with actionable validation; other users cannot submit, fetch signatures or access another user's documents outside permitted office roles.
-- [ ] Every acknowledgement outcome works; unsigned logs submit; ancillary logs submit without client features.
-- [ ] Offline signature and Submit survive a full browser restart and complete on reconnect, with no duplicate revision/upload on lost response or concurrent retries.
-- [ ] Signed content is traceable; a material edit cannot silently reuse acknowledgement for different content.
-- [ ] Submitted revisions resist later draft-sync overwrite; immutable snapshots remain unchanged as future workflow revisions are introduced.
-- [ ] PDFs reflect the chosen revision, carry the draft marking and omit all internal-only fields; representative multipage PDFs are visually checked.
-- [ ] No email is sent by submission or PDF generation. Explicit Send delivers the correct PDF to the selected test recipient and records history.
-- [ ] Replayed send requests do not duplicate delivery; intentional resend and ambiguous failures have explicit behaviour.
-- [ ] Retention removes only eligible approved/synced local records and preserves protected data/signatures/outbox work.
-- [ ] Existing Step 4 regressions, contract validation, lint, build and new tests pass.
-
-Use the isolated Docker setup from [docs/LOCAL_DOCKER.md](docs/LOCAL_DOCKER.md). Relevant commands on Windows:
+Default local checks (select those appropriate to the change):
 
 ```powershell
 npm.cmd run lint
 npm.cmd test
 npm.cmd run contracts:validate
 npm.cmd run build
-docker compose -f compose.local.yaml up --build -d
-npm.cmd run test:e2e
 ```
 
-The previously recorded baseline was 17 Jobs unit/domain/IndexedDB tests, seven browser/real-Postgres tests and two receiver tests in Field, plus a mocked Field UI smoke check. This handoff did not rerun those tests. Reassess the baseline before changing behaviour and add meaningful tests for the new workflow.
+For a specific database/integration question that justifies an optional Docker rerun, explain its purpose and use [docs/LOCAL_DOCKER.md](docs/LOCAL_DOCKER.md) or the guarded companion Ops integration workflow. Do not run containers as a routine prerequisite to development or user feedback.
 
-## Scope after this step
+Remaining acceptance gates:
 
-Step 6 covers the Ops review inbox, returns, supervisor corrections, driller confirmation, approval, reopen controls and final PDFs. Step 7 covers pilot hardening and rollout. Do not expand Step 5 into those steps; design revision/output records so they can support them later.
+- [ ] Agree the required information with a paired Jobs entry/Ops review walkthrough and resolve critical usability feedback.
+- [ ] Run focused verification appropriate to each change and gather remote Coolify feedback; repeat local database/browser tests only where a concrete unresolved risk warrants them.
+- [ ] Verify current Ops assignments, live CORE-GS read access and restricted shared-schema permissions.
+- [ ] Verify personal Android/iOS install, offline browser restart and reconnection on HTTPS.
+- [ ] Verify the compatible Ops submit → return/comment → owner correction/resubmission → approve → Jobs lock cycle in the target test environment.
+- [ ] Validate the implemented item/note correction/direct lock, optional return, audit and Jobs synchronization remotely, then extend shared editor coverage to times/crew/bore/allocation and adding/removing items.
+- [ ] Validate the implemented effective-locked project matrix remotely; agree commercial/measurement mapping, controlled correction/reopening and requisition freezing/reuse before extending it.
+- [ ] Complete the mixed pilot and rollout decision.
 
-Review the resulting diff and local validation before requesting any rollout decision. The new thread is authorised for development; this handoff does not authorise production deployment, live data changes or emailing real clients.
-
-## Step 5 implementation update - 14 October 2026
-
-The original handoff/work sequence above is preserved. Step 5 adds `db/004_submission_output.sql`, `server/submissions.mjs`, `server/output.mjs`, `server/email.mjs`, `src/domain/submission.js` and `src/components/SubmissionReview.jsx`, extending the existing IndexedDB/outbox/workspace and field layout.
-
-Local behaviour now includes actionable completeness checks; durable frozen Submit intentions; encrypted/restricted/idempotent signature storage; exact content binding and preserved earlier signed snapshots; atomic immutable submitted revisions; durable draft PDFs/checksums and generation retry; deliberate Send with Microsoft Graph and local capture adapters; genuine delivery history/replay/resend/unknown handling; and protected 14-day retention using approved fixtures. Ancillary submission has no client/signature/PDF controls. Approval/corrections and final PDFs remain Step 6.
-
-The user selected `substrata-jobs@drilling.co.nz` as a proposed Microsoft 365 inbox/outbox and authorised best-effort PDF branding/wording. They want client/contact chosen by the supervisor in Ops job setup and offered as a dropdown. The inspected Ops schema has `jobs.client_id` and `client_contacts`, but no persisted job contact selection. Jobs provides a client-scoped dropdown and editable explicit recipient, reports the missing default and supports a future verified contact UUID column through configuration. No Ops files/planner work/live records were changed.
-
-Production gaps: service mailbox, Entra application, restricted mailbox authorisation/admin consent, runtime credentials, persistent signature key/backup plan, contact SELECT grant and Ops job-contact selection need controlled configuration/verification. None were created or tested against production. Configuration presence is distinct from authorisation/receipt. Local email uses Mailpit without a relay; no real client was emailed. See `docs/COOLIFY_DEPLOYMENT.md` for variables, grants, durable storage, retry semantics and retention clock.
-
-Samples in `output/pdf/step5-*` cover long Water/Geotech descriptions and a drawn signature. Their multipage layouts were rendered for visual QA. New tests are in `test/submission.test.js` and `test/e2e/submission.spec.js`, including full offline browser restart, lost response replay, PDF failure and true failed/unknown sends. The previous Geotech browser assertion now identifies the newly created record rather than assuming synchronization revision zero or selecting a historical unfinished fixture. Final verification is recorded below.
-
-Final local verification: 25 unit/domain/IndexedDB tests, 13 browser/real-Postgres tests, lint, contract examples, production PWA/container build and draft-PDF visual/text checks pass. Critical submission/signature/Send paths were rechecked after payload cleanup; runtime dependency audit reports no production dependency vulnerabilities. The full browser suite includes the original seven Step 4 cases. Representative PDFs have two Geotech pages, two Water pages and three signed pages, with draft marking/page numbers on every page. Existing production acceptance gaps in the original handoff remain; these checks use isolated fixtures and do not claim live assignments, real-device LAN PWA acceptance or Microsoft 365 receipt. Changes remain uncommitted, including the preserved original documentation edits.
-
-Verification follow-up: after the successful full 13-test run, signature capture/PDF sizing was adjusted to preserve the same 8:3 drawing aspect ratio. All 25 unit tests, lint and the container build passed again; the updated signed sample was rendered and inspected. Docker Desktop subsequently became unreachable, so the targeted final browser recheck failed in fixture setup before running application assertions. Restart Docker Desktop, run `docker compose -f compose.local.yaml up --build -d`, then `npm.cmd run test:e2e` to close this remaining local verification item before rollout.
+Client signatures, final PDFs, mailbox/contact configuration and client delivery are optional follow-up acceptance, not gates above. Existing features remain available; their implementation does not mean production configuration is verified.
